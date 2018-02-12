@@ -4,7 +4,7 @@ fun main(args: Array<String>) {
     println("Hello World !")
 }
 
-public class Parser(str: String) {
+public class TestParser(str: String) {
     var _str = str
 
     fun setParser(str: String) { _str = str}

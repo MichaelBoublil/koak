@@ -9,7 +9,7 @@ import org.junit.runner.RunWith
 
 class ParserTest: Spek({
     given("A parser") {
-        val parser = Parser("def fun(i : int) {}")
+        val parser = TestParser("def fun(i : int) {}")
         on("IR assemble") {
             val ir = parser.toIR()
             it("should return the following value") {
