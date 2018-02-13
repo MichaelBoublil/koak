@@ -1,5 +1,5 @@
 package Parser
 
 interface INode {
-    fun dump();
+    fun dump() : String;
 }
