@@ -1,9 +1,11 @@
 package Parser
 
-data class BinOp(val x : String) : INode {
+data class BinOp(val s : String) : INode {
     override fun dump(): String {
         val className = this.javaClass
-        val str = className.kotlin.toString()
+        var str = className.kotlin.toString() + "("
+
+        str += s + ")"
         return str
     }
 }

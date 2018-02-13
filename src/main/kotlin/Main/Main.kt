@@ -1,9 +1,10 @@
 package Main
 
-import Parser.INode
-import Parser.LocalDef
+import Parser.*
 
 fun main(args: Array<String>) {
+    var ast = AST()
+    println(ast.javaClass.simpleName)
     println("Hello World !")
     /*val lala = INode
     val lol = INode

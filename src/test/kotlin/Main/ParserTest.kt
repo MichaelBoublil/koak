@@ -16,7 +16,8 @@ class ParserTest: Spek({
             val tree = parser.parse()
             val ref = AST(LocalDef(Prototype(Identifier("fun"), PrototypeArgs(Params(Identifier("i"), VarType("int")), FunType("int")))));
             it("should return the following value") {
-                assertBinaryEquals(tree.nodes, ref.nodes)
+                println(tree.dump());
+                assertEquals(tree.dump(), ref.dump())
             }
         }
     }
