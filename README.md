@@ -9,7 +9,7 @@
 ### Mediator
 -> Basic event mediator for code genericity
 
-## CLI 
+## CLI
 
 
 ## Parser
@@ -25,4 +25,3 @@
 -> Bindings to c / C++ LVM API
 
 -> JIT + Pretty Printer / Compiling
-

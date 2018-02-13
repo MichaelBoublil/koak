@@ -5,16 +5,17 @@ import org.jetbrains.spek.api.dsl.given
 import org.jetbrains.spek.api.dsl.it
 import org.jetbrains.spek.api.dsl.on
 import org.junit.Assert.*
-import org.junit.runner.RunWith
 
-class ParserTest: Spek({
-    given("A parser") {
-        val parser = TestParser("def fun(i : int) {}")
-        on("IR assemble") {
-            val ir = parser.toIR()
-            it("should return the following value") {
-                assertEquals("salut", ir)
-            }
-        }
-    }
-})
+import Parser.PegParser
+
+//class ParserTest: Spek({
+//    given("A parser") {
+//        val parser = PegParser("def fun(i : int) : int { putchar(i) }")
+//        on("Parse String") {
+//            val tree = parser.Parse()
+//            it("should return the following value") {
+//                assertEquals("salut", ir)
+//            }
+//        }
+//    }
+//})
