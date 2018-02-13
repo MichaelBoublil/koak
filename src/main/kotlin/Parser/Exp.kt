@@ -1,4 +1,4 @@
 package Parser
 
-data class Exp(val x : String) : INode() {
+data class Exp(val str : String) : INode() {
 }

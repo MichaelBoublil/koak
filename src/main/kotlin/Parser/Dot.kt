@@ -1,4 +1,4 @@
 package Parser
 
-data class Dot(val x : String) : INode() {
+data class Dot(val str : String) : INode() {
 }

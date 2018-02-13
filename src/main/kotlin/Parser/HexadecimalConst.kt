@@ -1,4 +1,4 @@
 package Parser
 
-data class HexadecimalConst(val x : String) : INode() {
+class HexadecimalConst(vararg children : INode) : INode() {
 }

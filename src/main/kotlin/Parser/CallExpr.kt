@@ -1,4 +1,4 @@
 package Parser
 
-data class CallExpr(val x : String) : INode() {
+class CallExpr(vararg children : INode) : INode() {
 }

@@ -1,4 +1,4 @@
 package Parser
 
-data class Unary(val x : String) : INode() {
+class Unary(vararg children : INode) : INode() {
 }

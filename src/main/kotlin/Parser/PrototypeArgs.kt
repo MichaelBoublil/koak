@@ -1,4 +1,4 @@
 package Parser
 
-data class PrototypeArgs(val x : String) : INode() {
+class PrototypeArgs(vararg children : INode) : INode() {
 }

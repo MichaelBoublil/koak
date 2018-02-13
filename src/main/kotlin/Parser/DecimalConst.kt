@@ -1,4 +1,4 @@
 package Parser
 
-data class DecimalConst(val x : String) : INode() {
+data class DecimalConst(val str : String) : INode() {
 }

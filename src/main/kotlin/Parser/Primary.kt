@@ -1,4 +1,4 @@
 package Parser
 
-data class Primary(val x : String) : INode() {
+class Primary(vararg children : INode) : INode() {
 }

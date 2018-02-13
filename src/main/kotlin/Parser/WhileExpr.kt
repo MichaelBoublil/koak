@@ -1,4 +1,4 @@
 package Parser
 
-data class WhileExpr(val x : String) : INode() {
+class WhileExpr(vararg children : INode) : INode() {
 }

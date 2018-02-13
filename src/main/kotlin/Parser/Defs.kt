@@ -1,4 +1,4 @@
 package Parser
 
-data class Defs(val x : String) : INode() {
+class Defs(vararg children : INode) : INode() {
 }

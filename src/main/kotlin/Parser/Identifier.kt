@@ -1,4 +1,4 @@
 package Parser
 
-data class Identifier(val x : String) : INode() {
+data class Identifier(val str : String) : INode() {
 }

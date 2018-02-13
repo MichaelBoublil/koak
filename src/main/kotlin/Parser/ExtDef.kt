@@ -1,4 +1,4 @@
 package Parser
 
-data class ExtDef(val x : String) : INode() {
+class ExtDef(vararg children : INode) : INode() {
 }

@@ -1,4 +1,4 @@
 package Parser
 
-data class TopExpr(val x : String) : INode() {
+class TopExpr(vararg children : INode) : INode() {
 }

@@ -1,4 +1,4 @@
 package Parser
 
-data class VarType(val x : String) : INode() {
+data class VarType(val str: String) : INode() {
 }

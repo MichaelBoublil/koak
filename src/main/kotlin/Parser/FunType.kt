@@ -1,4 +1,4 @@
 package Parser
 
-data class FunType(val x : String) : INode() {
+data class FunType(val str : String) : INode() {
 }

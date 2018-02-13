@@ -1,4 +1,4 @@
 package Parser
 
-data class DoubleConst(val x : String) : INode() {
+class DoubleConst(vararg children : INode) : INode() {
 }

@@ -1,4 +1,4 @@
 package Parser
 
-data class OctalConst(val x : String) : INode() {
+class OctalConst(vararg children : INode) : INode() {
 }

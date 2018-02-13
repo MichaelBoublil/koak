@@ -1,4 +1,5 @@
 package Parser
 
-data class LocalDef(val x : String) : INode() {
+class LocalDef(vararg children : INode) : INode() {
+
 }

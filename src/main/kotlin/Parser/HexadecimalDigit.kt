@@ -1,4 +1,4 @@
 package Parser
 
-data class HexadecimalDigit(val x : String) : INode() {
+data class HexadecimalDigit(val str : String) : INode() {
 }

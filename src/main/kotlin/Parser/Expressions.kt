@@ -1,4 +1,4 @@
 package Parser
 
-data class Expressions(val x : String) : INode() {
+class Expressions(vararg children : INode) : INode() {
 }

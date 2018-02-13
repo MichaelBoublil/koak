@@ -1,4 +1,4 @@
 package Parser
 
-data class PostFix(val x : String) : INode() {
+class PostFix(vararg children : INode) : INode() {
 }
