@@ -2,8 +2,8 @@ package Parser
 
 class AST(vararg val nodes : INode) {
     fun dump() : String {
-        val className = this.javaClass
-        var str = className.kotlin.toString() + "("
+        
+        var str = this.javaClass.simpleName + "("
         for (child in nodes) {
             str += child.dump()
             str += ", "

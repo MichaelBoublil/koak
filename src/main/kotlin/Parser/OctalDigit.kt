@@ -2,8 +2,8 @@ package Parser
 
 data class OctalDigit(val s : String) : INode {
     override fun dump(): String {
-        val className = this.javaClass
-        var str = className.kotlin.toString() + "("
+        
+        var str = this.javaClass.simpleName + "("
         str += s + ")"
         return str
     }
