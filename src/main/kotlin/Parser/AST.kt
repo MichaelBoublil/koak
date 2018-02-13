@@ -1,5 +1,5 @@
 package Parser
 
-class AST {
-    var nodes : Array<INode> = arrayOf()
+class AST(vararg val nodes : INode) {
+//    var nodes : Array<INode> = arrayOf()
 }

@@ -4,9 +4,9 @@ class PegParser(private var _str : String? = null) {
 
     fun setString(str : String) { _str = str }
 
-    fun Parse() : AST {
+    fun parse() : AST {
         if (_str == null)
             throw Exception(Messages.nullString)
-        return AST()
+        return AST(LocalDef(Prototype(Identifier("fun"), PrototypeArgs(Params(Identifier("i"), VarType("int")), FunType("int")))));
     }
 }

@@ -1,4 +1,5 @@
 package Parser
 
-open class INode {
+interface INode {
+    fun dump();
 }
