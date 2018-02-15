@@ -28,6 +28,7 @@ repositories {
 
 // setup dependencies
 dependencies {
+    testCompile "junit:junit:4.12"
     testCompile 'org.jetbrains.spek:spek-api:1.1.5'
     testRuntime 'org.jetbrains.spek:spek-junit-platform-engine:1.1.5'
 
