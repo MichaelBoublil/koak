@@ -23,13 +23,15 @@ class PegParser(private var _str : String? = null) {
         println("La string au debut : " + _str)
         val ret = isKdefs(_str)
         println("str a la fin : " + ret.first)
-        if (ret.second != null) {
-            println("pas null")
-            return ret.second
-        }
+        return ret.second
+    }
 
-        return (null)
-        //isIdentifier(_str)
+    private fun isBinop(str: String?) : Pair<String?, INode?> {
+        return when (str!!.first()) {
+            '=' -> Pair(str.drop(1), BinOp(str.first().toString(), true))
+            '+' -> Pair(str.drop(1), BinOp(str.first().toString(), false))
+            else -> Pair(str, null)
+        }
     }
 
     private fun isKdefs(str: String?) : Pair<String?, INode?> {
@@ -77,13 +79,34 @@ class PegParser(private var _str : String? = null) {
         }
     }
 
+    //TODO : list de node
     private fun isExpression(str: String?): Pair<String?, INode?> {
         // TODO: unary (#binop (#left_assoc unary / #right_assoc expression))*
         val ret = isUnary(str)
         return when (ret.second) {
             null -> Pair(str, null)
             else -> {
+                val ret1 = isBinop(ret.first)
                 val node = ret.second!!
+                when (ret1.second) {
+                    null -> return (Pair(ret.first, Expression(node)))
+                    else -> {
+                        val assoc: BinOp = ret1.second as BinOp
+                        val ret2 : Pair<String?, INode?>
+                        if (assoc.isRightAssoc)
+                            ret2 = isExpression(ret1.first)
+                        else
+                            ret2 = isUnary(ret1.first)
+                        return when (ret2.second) {
+                            null -> Pair(str, null)
+                            else -> {
+                                val node2 = ret2.second!!
+                                Pair(ret2.first, Expression(node2))
+                            }
+                        }
+
+                    }
+                }
                 Pair(ret.first, Expression(node))
             }
         }
