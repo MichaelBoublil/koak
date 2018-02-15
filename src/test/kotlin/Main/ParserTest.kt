@@ -46,19 +46,22 @@ class ParserTest: Spek({
 
             it("should return the following value") {
                 val ref = AST(
-                        TopExpr(
-                                Expressions(
-                                        Expression(
-                                                Unary(PostFix(
-                                                        Primary(Identifier("putchar")),
-                                                        CallExpr(Expression(Unary(PostFix(Primary(Literal(DecimalConst("48")))))))
-                                                ))
+                        Defs(
+                                TopExpr(
+                                        Expressions(
+                                                Expression(
+                                                        Unary(PostFix(
+                                                                Primary(Identifier("putchar")),
+                                                                CallExpr(Expression(Unary(PostFix(Primary(Literal(DecimalConst("48")))))))
+                                                        ))
+                                                )
                                         )
                                 )
                         )
                 );
                 println("REFERENCE: " + ref.dump());
-                assertEquals(tree.dump(), ref.dump())
+                println("ACTUAL: " + tree.dump());
+                assertEquals(ref.dump(), tree.dump())
             }
         }
 

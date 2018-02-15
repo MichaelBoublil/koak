@@ -125,7 +125,7 @@ class PegParser(private var _str : String? = null) {
     private fun isCallExpr(str: String?) : Pair<String?, INode?> {
         return when (str!!.first()) {
             '(' -> {
-                val ret = isPrimary(str.drop(1))
+                val ret = isExpression(str.drop(1))
                 return when (ret.second) {
                     null -> Pair(str, null)
                     else -> {
