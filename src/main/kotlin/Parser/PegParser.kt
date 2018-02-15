@@ -46,10 +46,30 @@ class PegParser(private var _str : String? = null) {
     private fun isPrimary(str: String?) : Pair<String?, INode?> {
         val ret = isIdentifier(str)
         return when (ret.second) {
-            null -> Pair(str, null)
+            null -> {//Pair(str, null)
+                val ret1 = isLiteral(str)
+                return when (ret1.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        val node = ret1.second!!
+                        Pair(ret1.first, Primary(node))
+                    }
+                }
+            }
             else -> {
                 val node = ret.second!!
                 Pair(ret.first, Primary(node))
+            }
+        }
+    }
+
+    private fun isLiteral(str: String?): Pair<String?, INode?> {
+        val ret = isDecimalConst(str, "")
+        return when (ret.second) {
+            null -> Pair(str, null)
+            else -> {
+                val node = ret.second!!
+                Pair(ret.first, Literal(node))
             }
         }
     }
