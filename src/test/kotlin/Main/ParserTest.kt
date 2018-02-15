@@ -12,7 +12,7 @@ import Parser.PegParser
 class ParserTest: Spek({
     given("A parser") {
         val parser = PegParser()
-        on("Function with int parameter and int return value. Correct syntax.") {
+        /*on("Function with int parameter and int return value. Correct syntax.") {
             parser.setString("def fun(x : int) : int 2 + x;")
             val tree = parser.parse()
             it("should return the following value") {
@@ -39,7 +39,7 @@ class ParserTest: Spek({
                 println("REFERENCE: " + ref.dump());
                 assertEquals(tree.dump(), ref.dump())
             }
-        }
+        }*/
         on("Simple Command Hello World. Correct Syntax") {
             parser.setString("putchar(48);")
             val tree = parser.parse()
@@ -63,7 +63,7 @@ class ParserTest: Spek({
         }
 
         // Ce test suggererait qu'on fait en effet l'inférence de type.
-        on("Simple Variable affectation WITH inference of type") {
+        /*on("Simple Variable affectation WITH inference of type") {
             parser.setString("x = 10;")
             val tree = parser.parse()
 
@@ -82,6 +82,6 @@ class ParserTest: Spek({
                 println("REFERENCE: " + ref.dump());
                 assertEquals(tree.dump(), ref.dump())
             }
-        }
+        }*/
     }
 })
