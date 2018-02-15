@@ -15,7 +15,7 @@ fun main(args: Array<String>) {
         FrontEnd(args)
     }
     catch (e : Exception) {
-        println("COMPILE ERROR:")
+        System.err.println("Compilation Error:")
         e.printStackTrace()
     }
 }

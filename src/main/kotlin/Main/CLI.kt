@@ -13,7 +13,7 @@ class CLI {
                 println(ast.dump())
             }
             catch(e : Exception) {
-                println("Compilation Error.")
+                System.err.println("Compilation Error.")
 //                e.printStackTrace()
             }
         }
