@@ -92,22 +92,20 @@ class PegParser(private var _str : String? = null) {
                     null -> return (Pair(ret.first, Expression(node)))
                     else -> {
                         val assoc: BinOp = ret1.second as BinOp
-                        val ret2 : Pair<String?, INode?>
-                        if (assoc.isRightAssoc)
-                            ret2 = isExpression(ret1.first)
+//                        val ret2 : Pair<String?, INode?>
+                        val ret2 = if (assoc.isRightAssoc)
+                            isExpression(ret1.first)
                         else
-                            ret2 = isUnary(ret1.first)
+                            isUnary(ret1.first)
                         return when (ret2.second) {
                             null -> Pair(str, null)
                             else -> {
                                 val node2 = ret2.second!!
-                                Pair(ret2.first, Expression(node2))
+                                Pair(ret2.first, Expression(ret.second!!, ret1.second!!, node2))
                             }
                         }
-
                     }
                 }
-                Pair(ret.first, Expression(node))
             }
         }
     }
