@@ -1,6 +1,7 @@
 package Parser
 
 import com.sun.corba.se.impl.resolver.INSURLOperationImpl
+import jdk.nashorn.internal.codegen.CompilerConstants
 
 class PegParser(private var _str : String? = null) {
 
@@ -11,20 +12,93 @@ class PegParser(private var _str : String? = null) {
     fun parse(): AST {
         if (_str == null)
             throw Exception(Messages.nullString)
-        startParse()
-//        return AST(LocalDef(Prototype(Identifier("fun"), PrototypeArgs(Params(Identifier("x"), VarType("int")), FunType("int"))), Expressions(Expression(Unary(PostFix(Primary(Literal(DecimalConst("2"))))), BinOp("+", true), Unary(PostFix(Primary(Identifier("x"))))))));
-        return AST()
+       val lol = startParse()
+        if (lol == null)
+            return (AST())
+        //        return AST(LocalDef(Prototype(Identifier("fun"), PrototypeArgs(Params(Identifier("x"), VarType("int")), FunType("int"))), Expressions(Expression(Unary(PostFix(Primary(Literal(DecimalConst("2"))))), BinOp("+", true), Unary(PostFix(Primary(Identifier("x"))))))));
+        return AST(lol!!)
     }
 
-    private fun startParse() {
+    private fun startParse() : INode? {
         println("La string au debut : " + _str)
-        val ret = isPostFix(_str)
+        val ret = isKdefs(_str)
         println("str a la fin : " + ret.first)
         if (ret.second != null) {
             println("pas null")
+            return ret.second
         }
 
+        return (null)
         //isIdentifier(_str)
+    }
+
+    private fun isKdefs(str: String?) : Pair<String?, INode?> {
+        // TODO : ext def -> local def -> top_expr
+        val ret = isTopExpr(str)
+        return when (ret.second) {
+            null -> Pair(str, null)
+            else -> {
+                val node = ret.second!!
+                Pair(ret.first, Defs(node))
+            }
+        }
+    }
+
+    private fun isTopExpr(str: String?): Pair<String?, INode?> {
+        val ret = isExpressions(str)
+        return when (ret.second) {
+            null -> Pair(str, null)
+            else -> {
+                if (ret.first.isNullOrEmpty())
+                    return Pair(str, null)
+
+                return when (ret.first!!.first()) {
+                    ';' -> {
+                        val node = ret.second!!
+                        val newStr = ret.first!!
+                        Pair(newStr.drop(1), TopExpr(node))
+                    }
+                    else -> Pair(str, null)
+                }
+            }
+        }
+    }
+
+    private fun isExpressions(str: String?): Pair<String?, INode?> {
+        // TODO: for -> if -> while -> expression(: expression)*
+
+        val ret = isExpression(str)
+        return when (ret.second) {
+            null -> Pair(str, null)
+            else -> {
+                val node = ret.second!!
+                Pair(ret.first, Expressions(node))
+            }
+        }
+    }
+
+    private fun isExpression(str: String?): Pair<String?, INode?> {
+        // TODO: unary (#binop (#left_assoc unary / #right_assoc expression))*
+        val ret = isUnary(str)
+        return when (ret.second) {
+            null -> Pair(str, null)
+            else -> {
+                val node = ret.second!!
+                Pair(ret.first, Expression(node))
+            }
+        }
+    }
+
+    private fun isUnary(str: String?): Pair<String?, INode?> {
+        //TODO : #unop unary / postfix
+        val ret = isPostFix(str)
+        return when (ret.second) {
+            null -> Pair(str, null)
+            else -> {
+                val node = ret.second!!
+                Pair(ret.first, Unary(node))
+            }
+        }
     }
 
     private fun isPostFix(str : String?) : Pair<String?, INode?> {
@@ -34,13 +108,40 @@ class PegParser(private var _str : String? = null) {
             else -> {
                 val ret1 = isCallExpr(ret.first)
                 val node = ret.second!!
-                Pair(ret.first, PostFix(node))
+                return when (ret1.second) {
+                    null -> {
+                        Pair(ret.first, PostFix(node))
+                    }
+                    else -> {
+                        val node2 = ret1.second!!
+                        Pair(ret1.first, PostFix(node, node2))
+                    }
+                }
+
             }
         }
     }
 
     private fun isCallExpr(str: String?) : Pair<String?, INode?> {
-        return Pair(str, null)
+        return when (str!!.first()) {
+            '(' -> {
+                val ret = isPrimary(str.drop(1))
+                return when (ret.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        return when (ret.first!!.first()) {
+                            ')' -> {
+                                val node = ret.second!!
+                                Pair(ret.first!!.drop(1), CallExpr(node))
+                            }
+                            else -> Pair(str, null)
+                        }
+
+                    }
+                }
+            }
+            else -> Pair(str, null)
+        }
     }
 
     private fun isPrimary(str: String?) : Pair<String?, INode?> {
@@ -64,9 +165,27 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isLiteral(str: String?): Pair<String?, INode?> {
-        val ret = isDecimalConst(str, "")
+        val ret = isHexadecimalConst(str)
         return when (ret.second) {
-            null -> Pair(str, null)
+            null -> {
+                val ret1 = isOctalConst(str)
+                return when (ret1.second) {
+                    null -> {
+                        val ret2 = isDecimalConst(str, "")
+                        return when (ret2.second) {
+                            null -> Pair(str, null)
+                            else -> {
+                                val node = ret2.second!!
+                                Pair(ret2.first, Literal(node))
+                            }
+                        }
+                    }
+                    else -> {
+                        val node = ret1.second!!
+                        Pair(ret1.first, Literal(node))
+                    }
+                }
+            }
             else -> {
                 val node = ret.second!!
                 Pair(ret.first, Literal(node))
@@ -82,9 +201,25 @@ class PegParser(private var _str : String? = null) {
             false -> {
                 return when (nb.length) {
                     0 -> Pair(str, null)
-                    else -> return (Pair(str, HexadecimalDigit(nb)))
+                    else -> return (Pair(str, HexadecimalDigit("0x" + nb)))
                 }
             }
+        }
+    }
+
+    private fun isHexadecimalConst(str : String?) : Pair<String?, INode?> {
+        return when (str!!.startsWith("0x", true)) {
+            true -> {
+                val ret = isHexadecimalDigit(str.drop(2), "")
+                return when (ret.second) {
+                    null -> Pair(ret.first, null)
+                    else -> {
+                        val node = ret.second!!
+                        Pair(ret.first, HexadecimalConst(node))
+                    }
+                }
+            }
+            else -> Pair(str, null)
         }
     }
 
@@ -94,9 +229,25 @@ class PegParser(private var _str : String? = null) {
             false -> {
                 return when (nb.length) {
                     0 -> Pair(str, null)
-                    else -> return (Pair(str, OctalDigit(nb)))
+                    else -> return (Pair(str, OctalDigit("0" + nb)))
                 }
             }
+        }
+    }
+
+    private fun isOctalConst(str : String?) : Pair<String?, INode?> {
+        return when (str!!.first()) {
+            '0' -> {
+                val ret = isOctalDigit(str.drop(1), "")
+                return when (ret.second) {
+                    null -> Pair(ret.first, null)
+                    else -> {
+                        val node = ret.second!!
+                        Pair(ret.first, OctalConst(node))
+                    }
+                }
+            }
+            else -> Pair(str, null)
         }
     }
 
