@@ -15,6 +15,7 @@ fun main(args: Array<String>) {
         FrontEnd(args)
     }
     catch (e : Exception) {
+        println("COMPILE ERROR:")
         e.printStackTrace()
     }
 }

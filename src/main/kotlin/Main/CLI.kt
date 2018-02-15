@@ -5,10 +5,17 @@ class CLI {
 
     fun run() {
         while (true) {
+            print("> ")
             val inputString = readLine() ?: break
-            println(inputString)
             parser.setString(inputString.replace("\\s".toRegex(), ""))
-            parser.parse()
+            try {
+                val ast = parser.parse()
+                println(ast.dump())
+            }
+            catch(e : Exception) {
+                println("Compilation Error.")
+//                e.printStackTrace()
+            }
         }
     }
 }
