@@ -1,6 +1,7 @@
 package Parser
 
 import com.sun.corba.se.impl.resolver.INSURLOperationImpl
+import com.sun.org.apache.xml.internal.dtm.ref.sax2dtm.SAX2DTM2
 import jdk.nashorn.internal.codegen.CompilerConstants
 import java.lang.System.out
 
@@ -14,7 +15,7 @@ class PegParser(private var _str : String? = null) {
         if (_str == null)
             throw Exception(Messages.nullString)
        val lol = startParse() ?: return (AST())
-        return AST(lol!!)
+        return AST(lol)
     }
 
     private fun startParse() : INode? {
@@ -25,14 +26,59 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isKdefs(str: String?) : Pair<String?, INode?> {
-        // TODO : ext def -> local def -> top_expr
-        val ret = isTopExpr(str)
+        val ret = isExtDef(str)
         return when (ret.second) {
-            null -> Pair(str, null)
-            else -> {
-                val node = ret.second!!
-                Pair(ret.first, Defs(node))
+            null -> {
+                val ret1 = isLocalDef(str)
+                return when (ret1.second) {
+                    null -> {
+                       val ret2 = isTopExpr(str)
+                        return when (ret2.second) {
+                            null -> Pair(str, null)
+                            else -> Pair(ret2.first, KDefs(ret2.second!!))
+                        }
+                    }
+                    else -> Pair(ret1.first, KDefs(ret1.second!!))
+                }
             }
+            else -> Pair(ret.first, KDefs(ret.second!!))
+            
+        }
+    }
+
+    private fun isExtDef(str: String?): Pair<String?, INode?> {
+        return when (str!!.startsWith("extern")) {
+            true -> {
+                val ret = isDefs(str.drop(6))
+                return when (ret.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        return when (ret.first!!.first()) {
+                            ';' -> Pair(ret.first!!.drop(1), ExtDef(ret.second!!))
+                            else -> Pair(str, null)
+                        }
+                    }
+                }
+            }
+            false -> Pair(str, null)
+        }
+    }
+
+    private fun isLocalDef(str: String?): Pair<String?, INode?> {
+        return when (str!!.startsWith("def")) {
+            true -> {
+                val ret = isDefs(str.drop(3))
+                return when (ret.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        return when (ret.first!!.first()) {
+                            ';' -> Pair(ret.first!!.drop(1), ExtDef(ret.second!!))
+                            else -> Pair(str, null)
+                        }
+                    }
+                }
+            }
+            false -> Pair(str, null)
         }
     }
 
@@ -56,20 +102,263 @@ class PegParser(private var _str : String? = null) {
         }
     }
 
-    private fun isExpressions(str: String?): Pair<String?, INode?> {
-        // TODO: for -> if -> while -> expression(: expression)*
-
-        val ret = isExpression(str)
+    private fun isDefs(str: String): Pair<String?, INode?> {
+        val ret = isPrototype(str)
         return when (ret.second) {
             null -> Pair(str, null)
             else -> {
-                val node = ret.second!!
-                Pair(ret.first, Expressions(node))
+                val ret1 = isExpressions(ret.first)
+                return when (ret1.second) {
+                    null -> Pair(str, null)
+                    else -> Pair(ret1.first, Defs(ret.second!!, ret1.second!!))
+                }
             }
         }
     }
 
-    //TODO : list de node
+    private fun isPrototype(str: String): Pair<String?, INode?> {
+        //TODO : ('unary' . decimal_const? / 'binary' . decimal_const? / indentifier) prototype_args
+        val ret = isIdentifier(str)
+        return when (ret.second) {
+            null -> Pair(str, null)
+            else -> {
+                val ret1 = isProtoArgs(ret.first)
+                return when (ret1.second) {
+                    null -> Pair(str, null)
+                    else -> Pair(ret1.first, Prototype(ret.second!!, ret1.second!!))
+                }
+            }
+        }
+    }
+
+    private fun isProtoArgs(str: String?): Pair<String?, INode?> {
+        return when (str!!.first()) {
+            '(' -> {
+                val ret = isIdentifier(str.drop(1))
+                return when (ret.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        return when (ret.first!!.first()) {
+                            ':' -> {
+                                val ret1 = isVarType(ret.first!!.drop(1))
+                                return when (ret1.second) {
+                                    null -> Pair(str, null)
+                                    else -> {
+                                        return when (ret1.first!!.startsWith("):")) {
+                                            true -> {
+                                                val ret2 = isFuncType(ret1.first!!.drop(2))
+                                                return when (ret2.second) {
+                                                    null -> Pair(str, null)
+                                                    else -> Pair(ret2.first, PrototypeArgs(ret.second!!, ret1.second!!, ret2.second!!))
+                                                }
+                                            }
+                                            false -> Pair(str, null)
+                                        }
+                                    }
+                                }
+                            }
+                            else -> Pair(str, null)
+                        }
+                    }
+                }
+            }
+            else -> Pair(str, null)
+        }
+    }
+
+    private fun isType(str: String?) : Pair<String, Boolean> {
+        return when (str!!.startsWith("int")) {
+            true -> Pair("int", true)
+            false -> {
+                return when (str!!.startsWith("double")) {
+                    true -> Pair("double", true)
+                    false -> {
+                        return when (str!!.startsWith("void")) {
+                            true -> Pair("void", true)
+                            false -> Pair("", false)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun isFuncType(str: String?): Pair<String?, INode?> {
+        val ret = isType(str)
+        return when (ret.second){
+            true -> Pair(str!!.drop(ret.first.length), FunType(ret.first))
+            false -> Pair(str, null)
+        }
+    }
+
+    private fun isVarType(str: String?): Pair<String?, INode?> {
+        val ret = isType(str)
+        return when (ret.second){
+            true -> Pair(str!!.drop(ret.first.length), FunType(ret.first))
+            false -> Pair(str, null)
+        }
+    }
+
+    private fun isExpressions(str: String?): Pair<String?, INode?> {
+        // TODO: for -> if -> while -> expression(: expression)*
+
+        val ret = isForExpr(str)
+        return when (ret.second) {
+            null -> {
+                val ret1 = isIfExpr(str)
+                return when (ret1.second) {
+                    null -> {
+                        val ret2 = isWhileExpr(str)
+                        return when (ret2.second) {
+                            null -> {
+                                val ret3 = isExpression(str)
+                                return when (ret3.second) {
+                                    null -> Pair(str, null)
+                                    else -> Pair(ret3.first, Expressions(ret3.second!!))
+                                }
+                            }
+                            else -> Pair(ret2.first, Expressions(ret2.second!!))
+                        }
+                    }
+                    else -> Pair(ret1.first, Expressions(ret1.second!!))
+                }
+            }
+            else -> Pair(ret.first, Expressions(ret.second!!))
+        }
+
+
+    }
+
+    private fun isIfExpr(str: String?): Pair<String?, INode?> {
+        return when (str!!.startsWith("if")) {
+            true -> {
+                val ret = isExpression(str.drop(2))
+                return when (ret.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        return when (ret.first!!.startsWith("then")) {
+                            true -> {
+                                val ret1 = isExpressions(ret.first!!.drop(4))
+                                return when (ret1.second) {
+                                    null -> Pair(str, null)
+                                    else -> {
+                                        return when (ret1.first!!.startsWith("else")) {
+                                            true -> {
+                                                val ret2 = isExpressions(ret1.first!!.drop(4))
+                                                return when (ret2.second) {
+                                                    null -> Pair(str, null)
+                                                    else -> Pair(ret2.first, IfExpr(ret.second!!, ret1.second!!, ret2.second!!))
+                                                }
+                                            }
+                                            false -> Pair(ret1.first, IfExpr(ret.second!!, ret1.second!!))
+                                        }
+                                    }
+                                }
+                            }
+                            false -> Pair(str, null)
+                        }
+                    }
+                }
+            }
+            false -> Pair(str, null)
+        }
+    }
+
+    private fun isWhileExpr(str: String?): Pair<String?, INode?> {
+        return when (str!!.startsWith("while")) {
+            true -> {
+                val ret = isExpression(str.drop(5))
+                return when (ret.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        return when (ret.first!!.startsWith("do")) {
+                            true -> {
+                                val ret1 = isExpressions(ret.first!!.drop(2))
+                                return when (ret1.second) {
+                                    null -> Pair(str, null)
+                                    else -> Pair(ret1.first, WhileExpr(ret.second!!, ret1.second!!))
+                                }
+                            }
+                            false -> Pair(str, null)
+                        }
+                    }
+                }
+            }
+            false -> Pair(str, null)
+        }
+    }
+
+    private fun isForExpr(str: String?): Pair<String?, INode?> {
+        return when (str!!.startsWith("for")) {
+            true -> {
+                val ret = isIdentifier(str.drop(3))
+                return when (ret.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        return when (ret.first!!.first()) {
+                            '=' -> {
+                                val ret1 = isExpression(ret.first!!.drop(1))
+                                return when (ret1.second) {
+                                    null -> Pair(str, null)
+                                    else -> {
+                                        return when (ret1.first!!.first()) {
+                                            ',' -> {
+                                                val ret2 = isIdentifier(ret1.first!!.drop(1))
+                                                return when (ret2.second) {
+                                                    null -> Pair(str, null)
+                                                    else -> {
+                                                        return when (ret2.first!!.first()) {
+                                                            '<' -> {
+                                                                val ret3 = isExpression(ret2.first!!.drop(1))
+                                                                return when (ret3.second) {
+                                                                    null -> Pair(str, null)
+                                                                    else -> {
+                                                                        return when (ret3.first!!.first()) {
+                                                                            ',' -> {
+                                                                                val ret4 = isExpression(ret3.first!!.drop(1))
+                                                                                return when (ret4.second) {
+                                                                                    null -> Pair(str, null)
+                                                                                    else -> {
+                                                                                        return when (ret4.first!!.startsWith("in")) {
+                                                                                            true -> {
+                                                                                                val ret5 = isExpressions(ret4.first!!.drop(2))
+                                                                                                return when (ret5.second) {
+                                                                                                    null -> Pair(str, null)
+                                                                                                    else -> Pair(ret5.first, ForExpr(ret.second!!,
+                                                                                                            ret1.second!!, ret2.second!!,
+                                                                                                            ret3.second!!, ret4.second!!,
+                                                                                                            ret5.second!!))
+                                                                                                }
+                                                                                            }
+                                                                                            false -> Pair(str, null)
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                            else -> Pair(str, null)
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            else -> Pair(str, null)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            else -> Pair(str, null)
+                                        }
+                                    }
+                                }
+                            }
+                            else -> Pair(str, null)
+                        }
+                    }
+                }
+            }
+            false -> Pair(str, null)
+        }
+    }
+
     private fun isExpression(str: String?): Pair<String?, INode?> {
         // TODO: unary (#binop (#left_assoc unary / #right_assoc expression))*
         val ret = isUnary(str)
@@ -77,11 +366,11 @@ class PegParser(private var _str : String? = null) {
             null -> Pair(str, null)
             else -> {
                 val node = ret.second!!
-                var ret1 = isBinop(ret.first)
+                val ret1 = isBinop(ret.first)
                 when (ret1.second) {
                     null -> return (Pair(ret.first, Expression(node)))
                     else -> {
-                        var assoc: BinOp = ret1.second as BinOp
+                        val assoc: BinOp = ret1.second as BinOp
                         val ret2 = if (assoc.isRightAssoc)
                             isExpression(ret1.first)
                         else
@@ -159,7 +448,36 @@ class PegParser(private var _str : String? = null) {
         }
     }
 
+    private fun callExprRec(str: String?, list : List<INode>) : Pair<String?, List<INode>?> {
+        val ret = isExpression(str)
+        return when (ret.second) {
+            null -> {
+                when (str!!.first()) {
+                    ')' -> Pair<String?, List<INode>?>(str, emptyList())
+                    else -> Pair(str, null)
+                }
+            }
+            else -> {
+                return when (ret.first!!.first()) {
+                    ',' -> callExprRec(ret.first!!.drop(1), list + ret.second!!)
+                    ')' -> Pair(ret.first!!.drop(1), list + ret.second!!)
+                    else -> Pair(str, null)
+                }
+            }
+        }
+    }
+
     private fun isCallExpr(str: String?) : Pair<String?, INode?> {
+        return when (str!!.first()) {
+            '(' -> {
+                val (next, list) = callExprRec(str.drop(1), emptyList())
+                Pair(next, CallExpr(*(list!!.toTypedArray())))
+            }
+            else -> Pair(str, null)
+        }
+    }
+
+    /*private fun isCallExpr(str: String?) : Pair<String?, INode?> {
         return when (str!!.first()) {
             '(' -> {
                 val ret = isExpression(str.drop(1))
@@ -167,15 +485,6 @@ class PegParser(private var _str : String? = null) {
                     null -> Pair(str, null)
                     else -> {
                         return when (ret.first!!.first()) {
-                            /*',' -> {
-                                val ret1 = isExpression(ret.first!!.drop(1))
-                                return when (ret1.second) {
-                                    null -> Pair(str, null)
-                                    else -> {
-
-                                    }
-                                }
-                            }*/
                             ')' -> {
                                 val node = ret.second!!
                                 Pair(ret.first!!.drop(1), CallExpr(node))
@@ -188,7 +497,7 @@ class PegParser(private var _str : String? = null) {
             }
             else -> Pair(str, null)
         }
-    }
+    }*/
 
     private fun isPrimary(str: String?) : Pair<String?, INode?> {
         val ret = isIdentifier(str)
