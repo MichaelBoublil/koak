@@ -8,7 +8,8 @@ class CallExpr(vararg val children : INode) : INode {
             str += child.dump()
             str += ", "
         }
-        str += "\b\b"
+        if (children.isNotEmpty())
+            str += "\b\b"
         str += ")"
         return str
     }

@@ -359,7 +359,38 @@ class PegParser(private var _str : String? = null) {
         }
     }
 
+    private fun expressionRec(str: String?, lvalue : INode) : Pair<String?, INode?> {
+        var ret1 = isBinop(str)
+        when (ret1.second) {
+            null -> return (Pair(str, lvalue))
+            else -> {
+                var assoc: BinOp = ret1.second as BinOp
+                val ret2 = if (assoc.isRightAssoc)
+                    isExpression(ret1.first)
+                else
+                    isUnary(ret1.first)
+                return when (ret2.second) {
+                    null -> return (Pair(str, null))
+                    else -> {
+                        assoc.setChildrentoAdd(lvalue, ret2.second!!)
+                        expressionRec(ret2.first, assoc)
+                    }
+                }
+            }
+        }
+
+    }
+
     private fun isExpression(str: String?): Pair<String?, INode?> {
+        val ret = isUnary(str)
+        return when (ret.second) {
+            null -> Pair(str, null)
+            else -> {
+                expressionRec(ret.first, ret.second!!)
+            }
+        }
+    }
+    /*private fun isExpression(str: String?): Pair<String?, INode?> {
         // TODO: unary (#binop (#left_assoc unary / #right_assoc expression))*
         val ret = isUnary(str)
         return when (ret.second) {
@@ -386,13 +417,25 @@ class PegParser(private var _str : String? = null) {
                 }
             }
         }
-    }
+    }*/
 
     private fun isBinop(str: String?) : Pair<String?, INode?> {
-        return when (str!!.first()) {
-            '=' -> Pair(str.drop(1), BinOp(str.first().toString(), true))
-            '+' -> Pair(str.drop(1), BinOp(str.first().toString(), false))
-            else -> Pair(str, null)
+        when (str!!.first()) {
+            '=' -> return Pair(str.drop(1), BinOp("=", true))
+        }
+        return when (str.matches(Regex("(\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|^=|\\|=).*"))) {
+            true -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
+            else -> {
+                return when (str.matches(Regex("(\\|\\||&&|==|!=|<=|>=).*"))) {
+                    true -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
+                    else -> {
+                        return when (str.first()) {
+                            in "+-*/%" ->Pair(str.drop(1), BinOp(str.first().toString(), false))
+                            else -> Pair(str, null)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -453,7 +496,7 @@ class PegParser(private var _str : String? = null) {
         return when (ret.second) {
             null -> {
                 when (str!!.first()) {
-                    ')' -> Pair<String?, List<INode>?>(str, emptyList())
+                    ')' -> Pair<String?, List<INode>?>(str.drop(1), emptyList())
                     else -> Pair(str, null)
                 }
             }
@@ -471,7 +514,11 @@ class PegParser(private var _str : String? = null) {
         return when (str!!.first()) {
             '(' -> {
                 val (next, list) = callExprRec(str.drop(1), emptyList())
-                Pair(next, CallExpr(*(list!!.toTypedArray())))
+                return when (list) {
+                    null -> Pair(str, null)
+                    emptyList<INode>() -> Pair(next, CallExpr())
+                    else -> Pair(next, CallExpr(*(list.toTypedArray())))
+                }
             }
             else -> Pair(str, null)
         }
