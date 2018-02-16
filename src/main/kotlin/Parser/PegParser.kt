@@ -72,7 +72,7 @@ class PegParser(private var _str : String? = null) {
                     null -> Pair(str, null)
                     else -> {
                         return when (ret.first!!.first()) {
-                            ';' -> Pair(ret.first!!.drop(1), ExtDef(ret.second!!))
+                            ';' -> Pair(ret.first!!.drop(1), LocalDef(ret.second!!))
                             else -> Pair(str, null)
                         }
                     }
@@ -194,7 +194,7 @@ class PegParser(private var _str : String? = null) {
     private fun isVarType(str: String?): Pair<String?, INode?> {
         val ret = isType(str)
         return when (ret.second){
-            true -> Pair(str!!.drop(ret.first.length), FunType(ret.first))
+            true -> Pair(str!!.drop(ret.first.length), VarType(ret.first))
             false -> Pair(str, null)
         }
     }

@@ -65,6 +65,122 @@ class ParserTest: Spek({
             }
         }
 
+        on("Multiplication Function. Correct Syntax") {
+            parser.setString("def mult(nb1 : int nb2 : int) : int nb1 * nb2;")
+            val tree = parser.parse()
+            val falseTree = "AST(KDefs(LocalDef(Defs(Prototype(Identifier(mult), PrototypeArgs(Identifier(nb1), VarType(int), Identifier(nb2), VarType(int), FunType(int))), Expressions(Expression(BinOp(*; rightAssoc = false; Unary(PostFix(Primary(Identifier(nb1)))), Unary(PostFix(Primary(Identifier(nb2)))))))))))"
+            it("should return the following value") {
+                val ref = AST(
+                        KDefs(
+                                LocalDef(
+                                        Defs(
+                                                Prototype(Identifier("mult"),
+                                                          PrototypeArgs(Identifier("nb1"),
+                                                                        VarType("int"),
+                                                                        Identifier("nb1"),
+                                                                        VarType("int"),
+                                                                        FunType("int"))),
+                                                Expressions(
+                                                   Expression(
+                                                      BinOp("*", false,
+                                                         Unary(
+                                                           PostFix(
+                                                             Primary(
+                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
+
+                println("REFERENCE: " + ref.dump());
+                println("ACTUAL: " + falseTree);
+                assertEquals(ref.dump(), falseTree)
+            }
+        }
+
+        on("Addition Function. Correct Syntax") {
+            parser.setString("def add(nb1 : int nb2 : int) : int nb1 + nb2;")
+            val tree = parser.parse()
+            val falseTree = "AST(KDefs(LocalDef(Defs(Prototype(Identifier(add), PrototypeArgs(Identifier(nb1), VarType(int), Identifier(nb2), VarType(int), FunType(int))), Expressions(Expression(BinOp(+; rightAssoc = false; Unary(PostFix(Primary(Identifier(nb1)))), Unary(PostFix(Primary(Identifier(nb2)))))))))))"
+            it("should return the following value") {
+                val ref = AST(
+                        KDefs(
+                                LocalDef(
+                                        Defs(
+                                                Prototype(Identifier("add"),
+                                                        PrototypeArgs(Identifier("nb1"),
+                                                                VarType("int"),
+                                                                Identifier("nb1"),
+                                                                VarType("int"),
+                                                                FunType("int"))),
+                                                Expressions(
+                                                        Expression(
+                                                                BinOp("+", false,
+                                                                        Unary(
+                                                                                PostFix(
+                                                                                        Primary(
+                                                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
+
+                println("REFERENCE: " + ref.dump());
+                println("ACTUAL: " + falseTree);
+                assertEquals(ref.dump(), falseTree)
+            }
+        }
+
+        on("Substraction Function. Correct Syntax") {
+            parser.setString("def sub(nb1 : int nb2 : int) : int nb1 - nb2;")
+            val tree = parser.parse()
+            val falseTree = "AST(KDefs(LocalDef(Defs(Prototype(Identifier(sub), PrototypeArgs(Identifier(nb1), VarType(int), Identifier(nb2), VarType(int), FunType(int))), Expressions(Expression(BinOp(-; rightAssoc = false; Unary(PostFix(Primary(Identifier(nb1)))), Unary(PostFix(Primary(Identifier(nb2)))))))))))"
+            it("should return the following value") {
+                val ref = AST(
+                        KDefs(
+                                LocalDef(
+                                        Defs(
+                                                Prototype(Identifier("sub"),
+                                                        PrototypeArgs(Identifier("nb1"),
+                                                                VarType("int"),
+                                                                Identifier("nb1"),
+                                                                VarType("int"),
+                                                                FunType("int"))),
+                                                Expressions(
+                                                        Expression(
+                                                                BinOp("-", false,
+                                                                        Unary(
+                                                                                PostFix(
+                                                                                        Primary(
+                                                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
+
+                println("REFERENCE: " + ref.dump());
+                println("ACTUAL: " + falseTree);
+                assertEquals(ref.dump(), falseTree)
+            }
+        }
+
+        on("Division Function. Correct Syntax") {
+            parser.setString("def div(nb1 : int nb2 : int) : int nb1 / nb2;")
+            val tree = parser.parse()
+            val falseTree = "AST(KDefs(LocalDef(Defs(Prototype(Identifier(div), PrototypeArgs(Identifier(nb1), VarType(int), Identifier(nb2), VarType(int), FunType(int))), Expressions(Expression(BinOp(/; rightAssoc = false; Unary(PostFix(Primary(Identifier(nb1)))), Unary(PostFix(Primary(Identifier(nb2)))))))))))"
+            it("should return the following value") {
+                val ref = AST(
+                        KDefs(
+                                LocalDef(
+                                        Defs(
+                                                Prototype(Identifier("div"),
+                                                        PrototypeArgs(Identifier("nb1"),
+                                                                VarType("int"),
+                                                                Identifier("nb1"),
+                                                                VarType("int"),
+                                                                FunType("int"))),
+                                                Expressions(
+                                                        Expression(
+                                                                BinOp("/", false,
+                                                                        Unary(
+                                                                                PostFix(
+                                                                                        Primary(
+                                                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
+
+                println("REFERENCE: " + ref.dump());
+                println("ACTUAL: " + falseTree);
+                assertEquals(ref.dump(), falseTree)
+            }
+        }
+
         // Ce test suggererait qu'on fait en effet l'inférence de type.
         /*on("Simple Variable affectation WITH inference of type") {
             parser.setString("x = 10;")
