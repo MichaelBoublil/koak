@@ -2,6 +2,7 @@ package Parser
 
 import com.sun.corba.se.impl.resolver.INSURLOperationImpl
 import jdk.nashorn.internal.codegen.CompilerConstants
+import java.lang.System.out
 
 class PegParser(private var _str : String? = null) {
 
@@ -12,10 +13,7 @@ class PegParser(private var _str : String? = null) {
     fun parse(): AST {
         if (_str == null)
             throw Exception(Messages.nullString)
-       val lol = startParse()
-        if (lol == null)
-            return (AST())
-        //        return AST(LocalDef(Prototype(Identifier("fun"), PrototypeArgs(Params(Identifier("x"), VarType("int")), FunType("int"))), Expressions(Expression(Unary(PostFix(Primary(Literal(DecimalConst("2"))))), BinOp("+", true), Unary(PostFix(Primary(Identifier("x"))))))));
+       val lol = startParse() ?: return (AST())
         return AST(lol!!)
     }
 
@@ -24,14 +22,6 @@ class PegParser(private var _str : String? = null) {
         val ret = isKdefs(_str)
         println("str a la fin : " + ret.first)
         return ret.second
-    }
-
-    private fun isBinop(str: String?) : Pair<String?, INode?> {
-        return when (str!!.first()) {
-            '=' -> Pair(str.drop(1), BinOp(str.first().toString(), true))
-            '+' -> Pair(str.drop(1), BinOp(str.first().toString(), false))
-            else -> Pair(str, null)
-        }
     }
 
     private fun isKdefs(str: String?) : Pair<String?, INode?> {
@@ -86,13 +76,12 @@ class PegParser(private var _str : String? = null) {
         return when (ret.second) {
             null -> Pair(str, null)
             else -> {
-                val ret1 = isBinop(ret.first)
                 val node = ret.second!!
+                var ret1 = isBinop(ret.first)
                 when (ret1.second) {
                     null -> return (Pair(ret.first, Expression(node)))
                     else -> {
-                        val assoc: BinOp = ret1.second as BinOp
-//                        val ret2 : Pair<String?, INode?>
+                        var assoc: BinOp = ret1.second as BinOp
                         val ret2 = if (assoc.isRightAssoc)
                             isExpression(ret1.first)
                         else
@@ -100,8 +89,8 @@ class PegParser(private var _str : String? = null) {
                         return when (ret2.second) {
                             null -> Pair(str, null)
                             else -> {
-                                val node2 = ret2.second!!
-                                Pair(ret2.first, Expression(ret.second!!, ret1.second!!, node2))
+                                assoc.setChildrentoAdd(ret.second!!, ret2.second!!)
+                                Pair(ret2.first, Expression(ret1.second!!))
                             }
                         }
                     }
@@ -110,15 +99,42 @@ class PegParser(private var _str : String? = null) {
         }
     }
 
+    private fun isBinop(str: String?) : Pair<String?, INode?> {
+        return when (str!!.first()) {
+            '=' -> Pair(str.drop(1), BinOp(str.first().toString(), true))
+            '+' -> Pair(str.drop(1), BinOp(str.first().toString(), false))
+            else -> Pair(str, null)
+        }
+    }
+
     private fun isUnary(str: String?): Pair<String?, INode?> {
-        //TODO : #unop unary / postfix
-        val ret = isPostFix(str)
-        return when (ret.second) {
-            null -> Pair(str, null)
-            else -> {
-                val node = ret.second!!
-                Pair(ret.first, Unary(node))
+        val ret = isUnop(str)
+        when (ret.second) {
+            null -> {
+                val ret2 = isPostFix(str)
+                return when (ret2.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        val node = ret2.second!!
+                        Pair(ret2.first, Unary(node))
+                    }
+                }
             }
+            else -> {
+                val ret1 = isUnary(ret.first)
+                return when (ret1.second) {
+                    null -> Pair(str, null)
+                    else -> Pair(ret1.first, Unary(ret.second!!, ret1.second!!))
+                }
+            }
+        }
+
+    }
+
+    private fun isUnop(str: String?): Pair<String?, INode?> {
+        return when (str!!.first()) {
+            in "!~+-" -> Pair(str.drop(1), UnOp(str.first().toString()))
+            else -> Pair(str, null)
         }
     }
 
@@ -151,6 +167,15 @@ class PegParser(private var _str : String? = null) {
                     null -> Pair(str, null)
                     else -> {
                         return when (ret.first!!.first()) {
+                            /*',' -> {
+                                val ret1 = isExpression(ret.first!!.drop(1))
+                                return when (ret1.second) {
+                                    null -> Pair(str, null)
+                                    else -> {
+
+                                    }
+                                }
+                            }*/
                             ')' -> {
                                 val node = ret.second!!
                                 Pair(ret.first!!.drop(1), CallExpr(node))
@@ -171,7 +196,13 @@ class PegParser(private var _str : String? = null) {
             null -> {//Pair(str, null)
                 val ret1 = isLiteral(str)
                 return when (ret1.second) {
-                    null -> Pair(str, null)
+                    null -> {
+                        val ret2 = isParenExpr(str)
+                        return when (ret2.second) {
+                            null -> Pair(str, null)
+                            else -> Pair(ret2.first, Primary(ret2.second!!))
+                        }
+                    }
                     else -> {
                         val node = ret1.second!!
                         Pair(ret1.first, Primary(node))
@@ -182,6 +213,24 @@ class PegParser(private var _str : String? = null) {
                 val node = ret.second!!
                 Pair(ret.first, Primary(node))
             }
+        }
+    }
+
+    private fun isParenExpr(str: String?): Pair<String?, INode?> {
+        return when (str!!.first()) {
+            '(' -> {
+                val ret = isExpressions(str.drop(1))
+                return when (ret.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        return when (ret.first!!.first()) {
+                            ')' -> Pair(ret.first!!.drop(1), ParenExpr(ret.second!!))
+                            else -> Pair(str, null)
+                        }
+                    }
+                }
+            }
+            else -> Pair(str, null)
         }
     }
 

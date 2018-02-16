@@ -10,7 +10,10 @@ class CLI {
             parser.setString(inputString.replace("\\s".toRegex(), ""))
             try {
                 val ast = parser.parse()
-                println(ast.dump())
+                if (ast.nodes.isEmpty())
+                    println("Syntax Error")
+                else
+                    println(ast.dump())
             }
             catch(e : Exception) {
                 System.err.println("Compilation Error.")
