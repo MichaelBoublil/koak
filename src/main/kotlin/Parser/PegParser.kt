@@ -386,7 +386,8 @@ class PegParser(private var _str : String? = null) {
         return when (ret.second) {
             null -> Pair(str, null)
             else -> {
-                expressionRec(ret.first, ret.second!!)
+                val ret1 = expressionRec(ret.first, ret.second!!)
+                Pair(ret1.first, Expression(ret1.second!!))
             }
         }
     }
