@@ -75,18 +75,18 @@ class ParserTest: Spek({
                                 LocalDef(
                                         Defs(
                                                 Prototype(Identifier("mult"),
-                                                          PrototypeArgs(Identifier("nb1"),
-                                                                        VarType("int"),
-                                                                        Identifier("nb1"),
-                                                                        VarType("int"),
-                                                                        FunType("int"))),
+                                                        PrototypeArgs(Identifier("nb1"),
+                                                                VarType("int"),
+                                                                Identifier("nb1"),
+                                                                VarType("int"),
+                                                                FunType("int"))),
                                                 Expressions(
-                                                   Expression(
-                                                      BinOp("*", false,
-                                                         Unary(
-                                                           PostFix(
-                                                             Primary(
-                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
+                                                        Expression(
+                                                                BinOp("*", false,
+                                                                        Unary(
+                                                                                PostFix(
+                                                                                        Primary(
+                                                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
 
                 println("REFERENCE: " + ref.dump());
                 println("ACTUAL: " + falseTree);

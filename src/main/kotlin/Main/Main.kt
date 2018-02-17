@@ -1,6 +1,19 @@
 package Main
 
+import Llvm.Api
+
 fun main(args: Array<String>) {
+    val llvm = Api()
+    val t = llvm.test()
+    if (t.state) {
+        println("Success")
+        println(t.content)
+    }
+    else {
+        println("Failure")
+        println(t.content)
+    }
+    return
     try {
         FrontEnd(args)
     }

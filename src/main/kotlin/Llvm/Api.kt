@@ -1,10 +1,46 @@
 package Llvm
 
+import Parser.*
 import org.bytedeco.javacpp.*
 import org.bytedeco.javacpp.LLVM.*
 
 class Api {
-    fun grok(args: Arra y<String>) {
+    fun test() : Test
+    {
+        val parser = PegParser()
+        val api = Api()
+
+        val fakeTree = AST(KDefs(LocalDef(Defs(
+                Prototype(Identifier("myFactorial"), PrototypeArgs(Identifier("nb"), VarType("int"), FunType("int"))),
+                Expressions(
+                        IfExpr(BinOp("=", true, Unary(PostFix(Primary(Identifier("nb")))), Unary(PostFix(Primary(Literal(DecimalConst("0")))))),
+                                Expressions(BinOp("*", false, Unary(PostFix(Primary(Identifier("nb")))),
+                                        Unary(PostFix(Primary(Identifier("myFactorial")),
+                                                CallExpr(BinOp("-", false, Unary(PostFix(Primary(Identifier("nb")))), Unary(PostFix(Primary(Literal(DecimalConst("1"))))))))))),
+                                Expressions(Unary(PostFix(Primary(Identifier("nb")))))))))))
+
+        val ref = 5 * 4 * 3 * 2
+        val ret = api.jit(fakeTree)
+
+        if (ref == ret.value.toInt())
+            return Test(true, ret.value)
+        return Test(false, ret.value)
+    }
+
+    // TopLevel abstraction
+    fun toIR(tree: AST) : IrObject {
+        return IrObject()
+    }
+
+    fun jit(tree: AST) : JitObject {
+        // Build the module from the ast
+        // Jit the module
+        // extract return value of jit ?
+        return JitObject()
+    }
+
+    // This function is to be ignored. It's a simple example.
+    fun grok(args: Array<String>) {
 
         // INIT
         val error = BytePointer(null as Pointer?) // Used to retrieve messages from functions
@@ -21,8 +57,6 @@ class Api {
         val fac_args = arrayOf(LLVMInt32Type())
         // Creating function
         val fac = LLVMAddFunction(mod, "fac", LLVMFunctionType(LLVMInt32Type(), fac_args[0], 1, 0))
-
-
 
         // Wut?
         LLVMSetFunctionCallConv(fac, LLVMCCallConv)
