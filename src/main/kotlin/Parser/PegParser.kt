@@ -15,15 +15,23 @@ class PegParser(private var _str : String? = null) {
     fun parse(): AST {
         if (_str == null)
             throw Exception(Messages.nullString)
-       val lol = startParse() ?: return (AST())
-        return AST(lol)
+        println("La string au debut : " + _str)
+       val res = startParse(_str!!, emptyList())
+        println("str a la fin : " + res.first)
+        if (res.second == null || res.first!!.isNotEmpty())
+            return (AST())
+        return AST(*res.second!!.toTypedArray())
     }
 
-    private fun startParse() : INode? {
-        println("La string au debut : " + _str)
-        val ret = isKdefs(_str)
-        println("str a la fin : " + ret.first)
-        return ret.second
+    private fun startParse(str: String, list: List<INode>) : Pair<String?, List<INode>?> {
+        val ret = isKdefs(str)
+        return when (ret.second) {
+            null -> Pair(str, null)
+            else -> return when (ret.first!!.isNotEmpty()) {
+                true -> startParse(ret.first!!, list + ret.second!!)
+                false -> Pair(ret.first, list + ret.second!!)
+            }
+        }
     }
 
     private fun isKdefs(str: String?) : Pair<String?, INode?> {
@@ -223,10 +231,8 @@ class PegParser(private var _str : String? = null) {
         return when (ret.second) {
             null -> Pair(str, list)
             else -> {
-                println("JE SUIS ICI A UN MOMENT BORDEL: " + ret.first)
                 return when (ret.first!!.contains(Regex("^[ \t]*:[ \t]*"))) {
                     true -> {
-                        println("TRUE: " + ret.first!!)
                         val next1 = ret.first!!.replace(Regex("^[ \t]*:[ \t]*"), "")
                         expressionRec(next1, list + ret.second!!)
                     }
