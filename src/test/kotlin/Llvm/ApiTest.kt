@@ -28,7 +28,7 @@ class ApiTest: Spek({
             it("should return the following value") {
                 val ref = 5 * 4 * 3 * 2
                 val ret = api.jit(fakeTree)
-                assertEquals(ref, ret.toInt())
+                assertEquals(ref, ret.value.toInt())
             }
         }
     }

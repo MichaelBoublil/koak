@@ -28,37 +28,56 @@ class Api {
     }
 
     // TopLevel abstraction
-    fun toIR(tree: AST) : IrObject {
-        return IrObject()
+    fun toIR(tree: AST) : Ir {
+        val ir = Ir()
+
+        return ir
     }
 
-    fun jit(tree: AST) : JitObject {
+    fun jit(tree: AST) : Jit {
         // Build the module from the ast
         // Jit the module
         // extract return value of jit ?
-        return JitObject()
+        return Jit()
     }
 
-    // This function is to be ignored. It's a simple example.
-    fun grok(args: Array<String>) {
-
-        // INIT
-        val error = BytePointer(null as Pointer?) // Used to retrieve messages from functions
-
+    val error: BytePointer = BytePointer(null as Pointer?)
+    init {
         LLVMLinkInMCJIT()
         LLVMInitializeNativeAsmPrinter()
         LLVMInitializeNativeAsmParser()
         LLVMInitializeNativeDisassembler()
         LLVMInitializeNativeTarget()
+    }
 
-        // Creating a module.
+    // This function is to be ignored. It's a simple example.
+    fun grok(args: Array<String>) {
+
+//        // INIT
+//        val error = BytePointer(null as Pointer?) // Used to retrieve messages from functions
+//
+//        LLVMLinkInMCJIT()
+//        LLVMInitializeNativeAsmPrinter()
+//        LLVMInitializeNativeAsmParser()
+//        LLVMInitializeNativeDisassembler()
+//        LLVMInitializeNativeTarget()
+
+        // Our own encapsulation of IR
+        val ir = Ir()
+
+        // Creating a module. // javacpp-llvm
         val mod = LLVMModuleCreateWithName("fac_module")
-        // Creating module args
+        // Replaced by // Ir
+        val myMod = ir.createModule("fac_module")
+
+        // Creating function args
         val fac_args = arrayOf(LLVMInt32Type())
         // Creating function
         val fac = LLVMAddFunction(mod, "fac", LLVMFunctionType(LLVMInt32Type(), fac_args[0], 1, 0))
+        // Replaced by // Ir
+        val myFacFunction = myMod.addFunction(LLVMInt32Type(), "myFactorial", arrayOf<LLVMTypeRef>(LLVMInt32Type()))
 
-        // Wut?
+        // SetFunctionCallConvention ?
         LLVMSetFunctionCallConv(fac, LLVMCCallConv)
         // On garde le premier parametre de la fonction fac
         val n = LLVMGetParam(fac, 0)
