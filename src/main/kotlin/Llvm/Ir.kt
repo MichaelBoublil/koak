@@ -1,5 +1,6 @@
 package Llvm
 
+import org.bytedeco.javacpp.*
 import org.bytedeco.javacpp.LLVM.*
 
 object Builder
@@ -50,12 +51,12 @@ class Ir
                             return false
                         var first : LLVMValueRef
                         var second : LLVMValueRef
-                        if (func.getParam(args[1]) != null)
-                            first = func.getParam(args[1])!!
+                        if (func.getLocalVar(args[1]) != null)
+                            first = func.getLocalVar(args[1])!!
                         else
                             first = LLVMConstInt(LLVMInt32Type(), args[1].toLong(), 0)
-                        if (func.getParam(args[2]) != null)
-                            second = func.getParam(args[2])!!
+                        if (func.getLocalVar(args[2]) != null)
+                            second = func.getLocalVar(args[2])!!
                         else
                             second = LLVMConstInt(LLVMInt32Type(), args[2].toLong(), 0)
 
@@ -70,7 +71,34 @@ class Ir
                         val conditionalValue = _content[args[1]]
 
                         placeEditorAtMe()
-                        LLVMBuildCondBr(Builder.llvm, conditionalValue, func.find(args[2])._blockLlvm, func.find(args[3])._blockLlvm)
+                        _content[identifier] = LLVMBuildCondBr(Builder.llvm, conditionalValue, func.find(args[2])._blockLlvm, func.find(args[3])._blockLlvm)
+                        return true
+                    }
+            factory["binop"] =
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 4)
+                            return false
+                        placeEditorAtMe()
+                        if (args[1].compareTo("*") == 0) // TODO: This is squared, not a real mul based on args !!
+                            _content[identifier] = LLVMBuildMul(Builder.llvm, func.getLocalVar("n"), func.getLocalVar("n"), identifier)
+                        return true
+                    }
+            factory["phi int"] =
+                    fun (identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 5)
+                            return false
+
+                        placeEditorAtMe()
+                        val res = LLVMBuildPhi(Builder.llvm, LLVMInt32Type(), identifier)
+                        val phi_blocks = args
+                                .filterIndexed({ i, s -> i % 2 == 1 && i > 0})
+                                .map { s -> func.find(s)._blockLlvm }
+                                .toTypedArray()
+                        val phi_vals = args
+                                .filterIndexed({ i, s -> i % 2 == 0 && i > 0})
+                                .map { s -> func.getLocalVar(s)?.let { it } ?: func.search(s)!! } // il faut aller chercher dans les contents de toute la fonction
+                                .toTypedArray()
+                        LLVMAddIncoming(res, PointerPointer(*phi_vals), PointerPointer(*phi_blocks), phi_blocks.size)
                         return true
                     }
         }
@@ -82,9 +110,6 @@ class Ir
                 return false
             return ret
         }
-        fun onCondition(ifTrue: Block, ifFalse: Block) {
-            // LLVMBuildCondBr(Builder.llvm, _cond, ifTrue._blockLlvm, ifFalse._blockLlvm)
-        }
     }
 
     class Function constructor(val module: Module,
@@ -95,6 +120,12 @@ class Ir
         var Blocks : MutableMap<String, Block> = mutableMapOf()
         init {
             LLVMSetFunctionCallConv(_funLlvm, LLVMCCallConv)
+        }
+
+        fun createConstInt(value: String) : LLVMValueRef {
+            val ref = LLVMConstInt(LLVMInt32Type(), value.toLong(), 0)
+            _local[value] = ref
+            return ref
         }
 
         fun find(identifier: String) : Block
@@ -109,14 +140,25 @@ class Ir
             return i
         }
 
-        var _paramVarsLlvm : MutableMap<String, LLVMValueRef> = mutableMapOf()
+        var _local : MutableMap<String, LLVMValueRef> = mutableMapOf()
         fun declareParamVar(identifier: String, index: Int) : LLVMValueRef {
-            _paramVarsLlvm[identifier] = LLVMGetParam(_funLlvm, index)
-            return _paramVarsLlvm[identifier]!!
+            _local[identifier] = LLVMGetParam(_funLlvm, index)
+            return _local[identifier]!!
         }
-        fun getParam(identifier: String) : LLVMValueRef?
+        fun getLocalVar(identifier: String) : LLVMValueRef?
         {
-            return _paramVarsLlvm[identifier]
+            return _local[identifier]
+        }
+        // search for instruction in any blocks of the function
+        fun search(identifier: String) : LLVMValueRef?
+        {
+            for (block in Blocks) {
+                for (inst in block.value._content)
+                    if (inst.key == identifier) {
+                        return inst.value
+                    }
+            }
+            return null
         }
     }
 

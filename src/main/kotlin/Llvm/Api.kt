@@ -124,13 +124,16 @@ class Api {
         // And then we'll have a conditional jump for n == 0, if its true it will go to FacRet, otherwise to FacFalse
         FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
 
-        FacFalse.append("n - 1", arrayOf("opp", "+", "n", "-1"))
+        FacFalse.append("n - 1", arrayOf("binop", "+", "n", "-1"))
         FacFalse.append("fac(n - 1)", arrayOf("call", myFacFunction.identifier))
-        FacFalse.append("n * fac(n - 1)", arrayOf("opp", "*", "n", "fac(n - 1)"))
+        FacFalse.append("n * fac(n - 1)", arrayOf("binop", "*", "n", "fac(n - 1)"))
         FacFalse.append("jump", arrayOf("jump", FacRet.identifier))
 
-        FacRet.append("phi", arrayOf("phi", WHAT THE FUCK ?))
-//        FacElse.next(FacRet)
+        myFacFunction.createConstInt("1")
+        FacRet.append("result", arrayOf("phi int",
+                FacFalse.identifier, "n * fac(n - 1)",
+                FacEntry.identifier, "1"))
+
         // Ensuite, on dit que le resultat de iftrue est une constante qui vaut 1 (logique, fac de 0 = 1)
         LLVMPositionBuilderAtEnd(builder, iftrue)
         val res_iftrue = LLVMConstInt(LLVMInt32Type(), 1, 0)
