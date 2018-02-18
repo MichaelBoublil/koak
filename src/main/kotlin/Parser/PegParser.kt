@@ -73,17 +73,30 @@ class PegParser(private var _str : String? = null) {
         }
     }
 
+    private fun isSpacing(str: String?) : Boolean {
+        return (str!!.contains(Regex("^[ \t]+")))
+    }
+
+    private fun epurSpace(str: String) : String {
+        return (str.replace(Regex("^[ \t]*"), ""))
+    }
+
     private fun isLocalDef(str: String?): Pair<String?, INode?> {
         return when (str!!.startsWith("def")) {
             true -> {
-                println("starts with def.")
-                val ret = isDefs(str.drop(3))
-                return when (ret.second) {
-                    null -> Pair(str, null)
-                    else -> {
-                        return when (ret.first!!.first()) {
-                            ';' -> Pair(ret.first!!.drop(1), LocalDef(ret.second!!))
-                            else -> Pair(str, null)
+                val str1 = str.drop(3);
+                return when (isSpacing(str1)) {
+                    false -> Pair(str, null)
+                    true -> {
+                        val ret = isDefs(str1.replace(Regex("^[ \t]+"), ""))
+                        return when (ret.second) {
+                            null -> Pair(str, null)
+                            else -> {
+                                return when (ret.first!!.first()) {
+                                    ';' -> Pair(ret.first!!.drop(1), LocalDef(ret.second!!))
+                                    else -> Pair(str, null)
+                                }
+                            }
                         }
                     }
                 }
@@ -113,14 +126,11 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isDefs(str: String): Pair<String?, INode?> {
-        println("isDefs string: " + str)
         val ret = isPrototype(str)
-        println("isPrototype resp: " + ret.first)
         return when (ret.second) {
             null -> Pair(str, null)
             else -> {
-                val ret1 = isExpressions(ret.first)
-                println("isExpressions resp: " + ret1.second!!.dump())
+                val ret1 = isExpressions(epurSpace(ret.first!!))
                 return when (ret1.second) {
                     null -> Pair(str, null)
                     else -> Pair(ret1.first, Defs(ret.second!!, ret1.second!!))
@@ -148,15 +158,16 @@ class PegParser(private var _str : String? = null) {
         val ret = isIdentifier(str)
         when (ret.second) {
             null -> {
-                return when (str!!.first()) {
-                    ')' -> Pair(str.drop(1), list)
+                return when (epurSpace(str!!).first()) {
+                    ')' -> Pair(epurSpace(str).drop(1), list)
                     else -> Pair(str, null)
                 }
             }
             else -> {
-                return when (ret.first!!.first()) {
+                val str1 = epurSpace(ret.first!!)
+                return when (str1.first()) {
                     ':' -> {
-                        val ret1 = isVarType(ret.first!!.drop(1))
+                        val ret1 = isVarType(epurSpace(str1.drop(1)))
                         return when (ret1.second) {
                             null -> Pair(str, null)
                             else -> ProtoArgsRec(ret1.first, list + Args(ret.second!!, ret1.second!!))
@@ -169,22 +180,23 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isProtoArgs(str: String?): Pair<String?, INode?> {
-        return when (str!!.first()) {
+        val str1 = epurSpace(str!!)
+        return when (str1.first()) {
             '(' -> {
-                val (next, list) = ProtoArgsRec(str.drop(1), emptyList())
+                val (next, list) = ProtoArgsRec(str1.drop(1), emptyList())
                 return when (list) {
                     null -> Pair(str, null)
                     else -> {
-                        return when (next!!.contains(Regex("^[ \t]*:"))) {
-                            true -> {
-                                val next1 = next.replace(Regex("^[ \t]*:"), "")
-                                val ret1 = isFuncType(next1)
+                        val next1 = epurSpace(next!!)
+                        return when (next1.first()) {
+                            ':' -> {
+                                val ret1 = isFuncType(epurSpace(next1.drop(1)))
                                 return when (ret1.second) {
                                     null -> Pair(str, null)
                                     else -> Pair(ret1.first, PrototypeArgs(*list.toTypedArray(), ret1.second!!))
                                 }
                             }
-                            false -> Pair(next, PrototypeArgs(*list.toTypedArray(), FunType("void")))
+                            else -> Pair(next, PrototypeArgs(*list.toTypedArray(), FunType("void")))
                         }
                     }
                 }
@@ -245,6 +257,7 @@ class PegParser(private var _str : String? = null) {
     private fun isExpressions(str: String?): Pair<String?, INode?> {
         // TODO: for -> if -> while -> expression(: expression)*
 
+        println(str)
         val ret = isForExpr(str)
         return when (ret.second) {
             null -> {
@@ -267,7 +280,6 @@ class PegParser(private var _str : String? = null) {
                 }
             }
             else -> {
-                println("is forExpr: " + ret.first)
                 Pair(ret.first, Expressions(ret.second!!))
             }
         }
@@ -337,33 +349,28 @@ class PegParser(private var _str : String? = null) {
     private fun isForExpr(str: String?): Pair<String?, INode?> {
         return when (str!!.startsWith("for")) {
             true -> {
-                println("starts with for.")
                 val ret = isIdentifier(str.drop(3))
                 return when (ret.second) {
                     null -> Pair(str, null)
                     else -> {
-                        println("is an identifier: " + ret.first)
                         return when (ret.first!!.first()) {
                             '=' -> {
                                 val ret1 = isExpression(ret.first!!.drop(1))
                                 return when (ret1.second) {
                                     null -> Pair(str, null)
                                     else -> {
-                                        println("first param good: " + ret1.first)
                                         return when (ret1.first!!.first()) {
                                             ',' -> {
                                                 val ret2 = isIdentifier(ret1.first!!.drop(1))
                                                 return when (ret2.second) {
                                                     null -> Pair(str, null)
                                                     else -> {
-                                                        println("before inferior: " + ret2.first)
                                                         return when (ret2.first!!.first()) {
                                                             '<' -> {
                                                                 val ret3 = isExpression(ret2.first!!.drop(1))
                                                                 return when (ret3.second) {
                                                                     null -> Pair(str, null)
                                                                     else -> {
-                                                                        println("after inferior: " + ret3.first)
                                                                         return when (ret3.first!!.first()) {
                                                                             ',' -> {
                                                                                 val ret4 = isExpression(ret3.first!!.drop(1))
@@ -373,7 +380,6 @@ class PegParser(private var _str : String? = null) {
                                                                                         return when (ret4.first!!.startsWith("in")) {
                                                                                             true -> {
                                                                                                 val ret5 = isExpressions(ret4.first!!.drop(2))
-                                                                                                println("isExpressions resp: " + ret5.first)
                                                                                                 return when (ret5.second) {
                                                                                                     null -> Pair(str, null)
                                                                                                     else -> Pair(ret5.first, ForExpr(ret.second!!,
@@ -549,28 +555,6 @@ class PegParser(private var _str : String? = null) {
         }
     }
 
-    /*private fun isCallExpr(str: String?) : Pair<String?, INode?> {
-        return when (str!!.first()) {
-            '(' -> {
-                val ret = isExpression(str.drop(1))
-                return when (ret.second) {
-                    null -> Pair(str, null)
-                    else -> {
-                        return when (ret.first!!.first()) {
-                            ')' -> {
-                                val node = ret.second!!
-                                Pair(ret.first!!.drop(1), CallExpr(node))
-                            }
-                            else -> Pair(str, null)
-                        }
-
-                    }
-                }
-            }
-            else -> Pair(str, null)
-        }
-    }*/
-
     private fun isPrimary(str: String?) : Pair<String?, INode?> {
         val ret = isIdentifier(str)
         return when (ret.second) {
@@ -715,8 +699,9 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isIdentifier(str : String?) : Pair<String?, INode?> {
-        if (str!!.first().isLetter()) {
-            return finishIdentifier(str.drop(1), "" + str.first())
+        val str1 = epurSpace(str!!)
+        if (str1.first().isLetter()) {
+            return finishIdentifier(str1.drop(1), "" + str1.first())
         }
         return Pair(str, null)
     }

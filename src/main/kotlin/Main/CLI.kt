@@ -7,7 +7,7 @@ class CLI {
         while (true) {
             print("> ")
             val inputString = readLine() ?: break
-            parser.setString(inputString.replace("\\s".toRegex(), ""))
+            parser.setString(inputString)
             try {
                 val ast = parser.parse()
                 if (ast.nodes.isEmpty())
