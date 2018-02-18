@@ -65,6 +65,9 @@ class Api {
         // Our own encapsulation of IR
         val ir = Ir()
 
+        // On cree un LLVM builder (vers IR)
+        val builder = LLVMCreateBuilder()
+
         // Creating a module. // javacpp-llvm
         val mod = LLVMModuleCreateWithName("fac_module")
         // Replaced by // Ir
@@ -80,9 +83,18 @@ class Api {
         // SetFunctionCallConvention ?
         LLVMSetFunctionCallConv(fac, LLVMCCallConv)
         // On garde le premier parametre de la fonction fac
-        val n = LLVMGetParam(fac, 0)
 
-        // On ajoute des instructions dans la fonction fac
+        // HOW TO ADD CODE IN FUNCTION :
+        val n = LLVMGetParam(fac, 0)
+        // n is now bound to first argument of function
+        val myFactorialParameter = myFacFunction.declareParamVar("n", 0)
+
+
+        //
+        // TO BE CONTINUED
+        //
+
+        // On ajoute des blocks dans la fonction fac
         // Entry
         val entry = LLVMAppendBasicBlock(fac, "entry")
         // iftrye
@@ -92,10 +104,13 @@ class Api {
         // end
         val end = LLVMAppendBasicBlock(fac, "end")
 
-        // On cree un LLVM builder (vers IR?)
-        val builder = LLVMCreateBuilder()
+        // Les blocs de la fonction factorial
+        val FacEntry = myFacFunction.addBlock("entry")
+        val FacTrue = myFacFunction.addBlock("iftrue")
+        val FacFalse = myFacFunction.addBlock("iffalse")
+        val FacRet = myFacFunction.addBlock("end")
 
-        // Soit.
+        // Meaning to append entry ? because maybe you can build elsewhere ?
         LLVMPositionBuilderAtEnd(builder, entry)
         // If est un comparateur d'int (LLVMIntEQ) entre n et une constante (LLVMInt32) qui vaut 0, on nomme cette comparaison : n == 0
         val If = LLVMBuildICmp(builder, LLVMIntEQ, n, LLVMConstInt(LLVMInt32Type(), 0, 0), "n == 0")
@@ -104,6 +119,18 @@ class Api {
         // si If vaut false on va dans iffalse
         LLVMBuildCondBr(builder, If, iftrue, iffalse)
 
+        // We'll have a compare instruction of n and 1
+        FacEntry.append("n == 1", arrayOf("compare ints", "n", "1"))
+        // And then we'll have a conditional jump for n == 0, if its true it will go to FacRet, otherwise to FacFalse
+        FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
+
+        FacFalse.append("n - 1", arrayOf("opp", "+", "n", "-1"))
+        FacFalse.append("fac(n - 1)", arrayOf("call", myFacFunction.identifier))
+        FacFalse.append("n * fac(n - 1)", arrayOf("opp", "*", "n", "fac(n - 1)"))
+        FacFalse.append("jump", arrayOf("jump", FacRet.identifier))
+
+        FacRet.append("phi", arrayOf("phi", WHAT THE FUCK ?))
+//        FacElse.next(FacRet)
         // Ensuite, on dit que le resultat de iftrue est une constante qui vaut 1 (logique, fac de 0 = 1)
         LLVMPositionBuilderAtEnd(builder, iftrue)
         val res_iftrue = LLVMConstInt(LLVMInt32Type(), 1, 0)
@@ -125,7 +152,6 @@ class Api {
         // return de iffalse
         LLVMBuildBr(builder, end)
 
-        // Probablement le printer de result
         LLVMPositionBuilderAtEnd(builder, end)
         // Phi ?
         val res = LLVMBuildPhi(builder, LLVMInt32Type(), "result")
@@ -177,5 +203,7 @@ class Api {
         LLVMDisposePassManager(pass)
         LLVMDisposeBuilder(builder)
         LLVMDisposeExecutionEngine(engine)
+
+        ir.print()
     }
 }
