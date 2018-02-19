@@ -1,5 +1,6 @@
 package Main
 
+import Llvm.Api
 import java.io.File
 import java.io.InputStream
 
@@ -19,8 +20,12 @@ class Compiler(file : String) {
             val ast = parser.parse()
             if (ast.nodes.isEmpty())
                 println("Syntax Error")
-            else
+            else {
                 println(ast.dump())
+                val llvm = Api()
+                val ir = llvm.toIR(ast)
+                ir.print()
+            }
         }
         catch(e : Exception) {
             System.err.println("Compilation Error.")

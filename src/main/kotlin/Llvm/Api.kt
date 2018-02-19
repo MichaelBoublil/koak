@@ -9,6 +9,25 @@ class Api {
     fun toIR(tree: AST) : Ir {
         val ir = Ir()
 
+        val main = ir.createModule("main")
+
+        for (node in tree.nodes) {
+            val def = node as KDefs
+
+            for (child in def.children) {
+                when (child) {
+                    is TopExpr -> {
+
+                    }
+                    is LocalDef -> {
+
+                    }
+                    is ExtDef -> {
+
+                    }
+                }
+            }
+        }
         return ir
     }
 
