@@ -6,40 +6,16 @@ import org.bytedeco.javacpp.LLVM.*
 import java.lang.Thread.sleep
 
 class Api {
-    fun test() : Test
-    {
-        val parser = PegParser()
-        val api = Api()
-
-        val fakeTree = AST(KDefs(LocalDef(Defs(
-                Prototype(Identifier("myFactorial"), PrototypeArgs(Identifier("nb"), VarType("int"), FunType("int"))),
-                Expressions(
-                        IfExpr(BinOp("=", true, Unary(PostFix(Primary(Identifier("nb")))), Unary(PostFix(Primary(Literal(DecimalConst("0")))))),
-                                Expressions(BinOp("*", false, Unary(PostFix(Primary(Identifier("nb")))),
-                                        Unary(PostFix(Primary(Identifier("myFactorial")),
-                                                CallExpr(BinOp("-", false, Unary(PostFix(Primary(Identifier("nb")))), Unary(PostFix(Primary(Literal(DecimalConst("1"))))))))))),
-                                Expressions(Unary(PostFix(Primary(Identifier("nb")))))))))))
-
-        val ref = 5 * 4 * 3 * 2
-        val ret = api.jit(fakeTree)
-
-        if (ref == ret.value.toInt())
-            return Test(true, ret.value)
-        return Test(false, ret.value)
-    }
-
-    // TopLevel abstraction
     fun toIR(tree: AST) : Ir {
         val ir = Ir()
 
         return ir
     }
 
-    fun jit(tree: AST) : Jit {
-        // Build the module from the ast
-        // Jit the module
-        // extract return value of jit ?
-        throw Error("Not Implemented")
+    fun jit(tree: AST) {
+        val ir = toIR(tree)
+        val jit = ir.jit()
+        return jit
     }
 
     init {
@@ -50,11 +26,13 @@ class Api {
         LLVMInitializeNativeTarget()
     }
 
-    // This function is to be ignored. It's a simple example.
     fun grok(args: Array<String>) {
+        // An IR is a collection of Modules
         val ir = Ir()
+
+        // That a module, it can contain more than one function
         val myMod = ir.createModule("fac_module")
-        // on pourrait avoir un array de identifier<>Type ?
+
         val myFacFunction = myMod.addFunction(LLVMInt32Type(), "myFactorial", arrayOf(LLVMInt32Type()))
         myFacFunction.declareParamVar("n", 0)
 
