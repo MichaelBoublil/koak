@@ -4,16 +4,7 @@ import Llvm.Api
 
 fun main(args: Array<String>) {
     val llvm = Api()
-    val t = llvm.test()
-    llvm.grok(args)
-    if (t.state) {
-        println("Success")
-        println(t.content)
-    }
-    else {
-        println("Failure")
-        println(t.content)
-    }
+    llvm.grok(arrayOf("5"))
     return
     try {
         FrontEnd(args)
