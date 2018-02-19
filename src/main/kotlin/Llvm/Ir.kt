@@ -284,11 +284,18 @@ class Ir
         return m
     }
 
-    fun jit()
+    fun jit(module: String = "")
     {
         for (mod in modules) {
-            val res = mod.value.jit()
-            println("JIT Of ${mod.value.identifier} is :\n$res")
+            if (module != "") {
+                val res = mod.value.jit()
+                println("JIT Of ${mod.value.identifier} is :\n$res")
+            } else {
+                if (module == mod.key) {
+                    val res = mod.value.jit()
+                    println("JIT Of ${mod.value.identifier} is :\n$res")
+                }
+            }
         }
     }
 
