@@ -1,9 +1,7 @@
-#test
-
-def mandelhelp(xmin xmax xstep ymin ymax ystep) #test
-    for y = ymin, y < ymax, ystep in (
-        (for x = xmin, x < xmax, xstep in
-            printdensity(mandelconverge(x,y)))
-        : putchard(10));
-
-mandelhelp(-23, -13, 5, 7);
+def printdensity(d)
+    if d > 8 then
+        putchar(32)  # ' '
+    else if d > 4 then
+    	 putchar(46)
+    else
+        putchar(42); # '*'

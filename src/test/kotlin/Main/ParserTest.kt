@@ -180,7 +180,7 @@ class ParserTest: Spek({
 //                assertEquals(ref.dump(), falseTree)
 //            }
 //        }
-
+s
         // Ce test suggererait qu'on fait en effet l'inférence de type.
         /*on("Simple Variable affectation WITH inference of type") {
             parser.setString("x = 10;")

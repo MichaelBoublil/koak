@@ -10,7 +10,7 @@ class Compiler(file : String) {
         val inputStream: InputStream = File(file).inputStream()
         val inputString = inputStream.bufferedReader().use { it.readText() }
 
-        val finalInput = inputString.replace(Regex("#.*\n"), "")
+        val finalInput = inputString.replace(Regex("#.*"), "")
         parser.setString(finalInput.replace(Regex("\n"), ""))
     }
 

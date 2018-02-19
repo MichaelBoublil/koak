@@ -27,9 +27,12 @@ class PegParser(private var _str : String? = null) {
         val ret = isKdefs(str)
         return when (ret.second) {
             null -> Pair(str, null)
-            else -> return when (ret.first!!.isNotEmpty()) {
-                true -> startParse(ret.first!!, list + ret.second!!)
-                false -> Pair(ret.first, list + ret.second!!)
+            else -> {
+                val str1 = epurSpace(ret.first!!)
+                return when (str1.isNotEmpty()) {
+                    true -> startParse(str1, list + ret.second!!)
+                    false -> Pair(str1, list + ret.second!!)
+                }
             }
         }
     }
@@ -56,9 +59,9 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isExtDef(str: String?): Pair<String?, INode?> {
-        return when (str!!.startsWith("extern")) {
+        return when (str!!.contains(Regex("^extern[ \t]+"))) {
             true -> {
-                val ret = isDefs(str.drop(6))
+                val ret = isPrototype(str.drop(6))
                 return when (ret.second) {
                     null -> Pair(str, null)
                     else -> {
@@ -141,14 +144,18 @@ class PegParser(private var _str : String? = null) {
 
     private fun isPrototype(str: String): Pair<String?, INode?> {
         //TODO : ('unary' . decimal_const? / 'binary' . decimal_const? / indentifier) prototype_args
-        val ret = isIdentifier(str)
+        val str1 = epurSpace(str)
+        val ret = isIdentifier(str1)
+
         return when (ret.second) {
             null -> Pair(str, null)
             else -> {
                 val ret1 = isProtoArgs(ret.first)
                 return when (ret1.second) {
                     null -> Pair(str, null)
-                    else -> Pair(ret1.first, Prototype(ret.second!!, ret1.second!!))
+                    else -> {
+                        Pair(ret1.first, Prototype(ret.second!!, ret1.second!!))
+                    }
                 }
             }
         }
@@ -256,17 +263,17 @@ class PegParser(private var _str : String? = null) {
 
     private fun isExpressions(str: String?): Pair<String?, INode?> {
         // TODO: for -> if -> while -> expression(: expression)*
-
-        val ret = isForExpr(str)
+        val str1 = epurSpace(str!!)
+        val ret = isForExpr(str1)
         return when (ret.second) {
             null -> {
-                val ret1 = isIfExpr(str)
+                val ret1 = isIfExpr(str1)
                 return when (ret1.second) {
                     null -> {
-                        val ret2 = isWhileExpr(str)
+                        val ret2 = isWhileExpr(str1)
                         return when (ret2.second) {
                             null -> {
-                                val ret3 = expressionRec(str, emptyList())
+                                val ret3 = expressionRec(str1, emptyList())
                                 return when (ret3.second) {
                                     emptyList<INode>() -> Pair(str, null)
                                     else -> Pair(ret3.first, Expressions(*ret3.second!!.toTypedArray()))
@@ -470,7 +477,7 @@ class PegParser(private var _str : String? = null) {
                     true -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
                     else -> {
                         return when (str.first()) {
-                            in "+-*/%<>" -> Pair(str.drop(1), BinOp(str.first().toString(), false))
+                            in "+-*/%<>|" -> Pair(str.drop(1), BinOp(str.first().toString(), false))
                             else -> Pair(str, null)
                         }
                     }
@@ -618,25 +625,22 @@ class PegParser(private var _str : String? = null) {
                 val ret1 = isOctalConst(str)
                 return when (ret1.second) {
                     null -> {
-                        val ret2 = isDecimalConst(str, "")
+                        val ret2 = isDoubleConst(str)
                         return when (ret2.second) {
-                            null -> Pair(str, null)
-                            else -> {
-                                val node = ret2.second!!
-                                Pair(ret2.first, Literal(node))
+                            null -> {
+                                val ret3 = isDecimalConst(str, "")
+                                return when (ret3.second) {
+                                    null -> Pair(str, null)
+                                    else -> Pair(ret3.first, Literal(ret3.second!!))
+                                }
                             }
+                            else -> Pair(ret2.first, Literal(ret2.second!!))
                         }
                     }
-                    else -> {
-                        val node = ret1.second!!
-                        Pair(ret1.first, Literal(node))
-                    }
+                    else -> Pair(ret1.first, Literal(ret1.second!!))
                 }
             }
-            else -> {
-                val node = ret.second!!
-                Pair(ret.first, Literal(node))
-            }
+            else -> Pair(ret.first, ret.second!!)
         }
     }
 
@@ -677,6 +681,102 @@ class PegParser(private var _str : String? = null) {
                 return when (nb.length) {
                     0 -> Pair(str, null)
                     else -> return (Pair(str, OctalDigit("0" + nb)))
+                }
+            }
+        }
+    }
+
+    private fun isDot(str: String?) : Pair<String?, INode?> {
+        return when (str!!.first()) {
+            '.' -> {
+                return when (str.drop(1).first()) {
+                    '.' -> Pair(str, null)
+                    else -> Pair(str.drop(1), Dot(str.first().toString()))
+                }
+            }
+            else -> Pair(str, null)
+        }
+    }
+
+    private fun isExp(str: String?) : Pair<String?, INode?> {
+        return when (str!!.first().toUpperCase()) {
+            'E' -> {
+                when (str.drop(1).first()) {
+                    '+' -> {
+                        val ret = isDecimalConst(str.drop(2), "")
+                        val dec = ret.second as DecimalConst
+                        return when (ret.second) {
+                            null -> Pair(str, null)
+                            else -> Pair(ret.first, Exp("e+" + dec.s))
+                        }
+                    }
+                    '-' -> {
+                        val ret = isDecimalConst(str.drop(2), "")
+                        val dec = ret.second as DecimalConst
+                        return when (ret.second) {
+                            null -> Pair(str, null)
+                            else -> Pair(ret.first, Exp("-" + dec.s))
+                        }
+                    }
+                    else -> {
+                        val ret = isDecimalConst(str.drop(1), "")
+                        val dec = ret.second as DecimalConst
+                        return when (ret.second) {
+                            null -> Pair(str, null)
+                            else -> Pair(ret.first, Exp("+" + dec.s))
+                        }
+                    }
+                }
+            }
+            else -> Pair(str, null)
+        }
+    }
+
+    private fun isDoubleConst(str: String?) : Pair<String?, INode?> {
+        val ret = isDecimalConst(str, "")
+        when (ret.second) {
+            null -> {
+                val ret1 = isDot(str)
+                return when (ret1.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        val ret2 = isDecimalConst(ret1.first, "")
+                        return when (ret2.second) {
+                            null -> Pair(str, null)
+                            else -> {
+                                val ret5 = isExp(ret2.first)
+                                return when (ret5.second) {
+                                    null -> Pair(ret2.first, DoubleConst(ret1.second!!, ret2.second!!))
+                                    else -> Pair(ret5.first, DoubleConst(ret1.second!!, ret2.second!!, ret5.second!!))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else -> {
+                val ret3 = isDot(ret.first)
+                return when (ret3.second) {
+                    null -> Pair(str, null)
+                    else -> {
+                        val ret4 = isDecimalConst(ret3.first, "")
+                        when (ret4.second) {
+                            null -> {
+                                val ret6 = isExp(ret3.first)
+                                return when (ret6.second) {
+                                    null -> Pair(ret3.first, DoubleConst(ret.second!!, ret3.second!!))
+                                    else -> Pair(ret6.first, DoubleConst(ret.second!!, ret3.second!!, ret6.second!!))
+                                }
+                            }
+                            else -> {
+                                val ret6 = isExp(ret4.first)
+                                return when (ret6.second) {
+                                    null -> Pair(ret4.first, DoubleConst(ret.second!!, ret3.second!!, ret4.second!!))
+                                    else -> Pair(ret6.first, DoubleConst(ret.second!!, ret3.second!!, ret4.second!!, ret6.second!!))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
