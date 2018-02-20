@@ -10,6 +10,39 @@ import javax.sound.sampled.Line
 class Api {
     val ir = Ir()
     val main = ir.createModule("main")
+    val mainFunction = main.addFunction(LLVMInt32Type(), "main", arrayOf(LLVMInt128Type()));
+    val entry = mainFunction.addBlock("entry")
+    val map : Map<InstructionType, (Info) -> String> = mapOf(
+            (InstructionType.CALL_FUNC to {
+            info ->
+                var params = emptyList<String>()
+                for (param in info.expressions) {
+                    params += getInfos(param)
+                }
+                entry.append(info.value, arrayOf("call", info.value, *params.toTypedArray()))
+                info.value
+            }),
+            (InstructionType.DEC_VALUE to {
+                info ->
+                info.value
+            }),
+            (InstructionType.ASSIGNMENT to {
+                info ->
+                println("assign: " + info.expressions[0].value + ", to: " + info.expressions[1].value)
+                mainFunction.createConstInt("0")
+                mainFunction.createConstInt("1")
+                entry.append(info.value, arrayOf("call", "putchar", "10"))
+                entry.append("myadd lolilol", arrayOf("binop", "+", "0", "1"))
+                entry.append(info.expressions[0].value, arrayOf("declare", info.expressions[1].value))
+                info.value
+            }),
+            (InstructionType.ADD to {
+                info ->
+                println("add: " + info.expressions[0].value + " and " + info.expressions[1].value)
+                entry.append("add", arrayOf("binop", "+", info.expressions[0].value, info.expressions[1].value))
+                info.value
+            })
+    )
 
     private fun topExprHandler(node: TopExpr) : List<Info> {
         return expressionsHandler(node.children[0] as Expressions)
@@ -53,18 +86,28 @@ class Api {
         return expr
     }
 
-    private fun binOpHandler(node: BinOp) : Info {return Info(InstructionType.ERROR)}
+    private fun binOpHandler(node: BinOp) : Info {
+        var instr = InstructionType.ERROR
+        when (node.s) {
+            "=" -> instr = InstructionType.ASSIGNMENT
+            "+" -> instr = InstructionType.ADD
+        }
+        return if (node.isRightAssoc)
+            Info(instr, node.s, unaryHandler(node.children[0] as Unary), *expressionHandler(node.children[1] as Expression).toTypedArray())
+        else
+            Info(instr, node.s, unaryHandler(node.children[0] as Unary), unaryHandler(node.children[1] as Unary))
+    }
 
     private fun unaryHandler(node: Unary) : Info {
         val child = node.children[0]
         return when (child) {
-                is UnOp -> {
-                     unOpHandler(child)
-                }
-                is PostFix -> {
-                    postFixHandler(child)
-                }
-                else -> Info(InstructionType.ERROR)
+            is UnOp -> {
+                unOpHandler(child)
+            }
+            is PostFix -> {
+                postFixHandler(child)
+            }
+            else -> Info(InstructionType.ERROR)
         }
     }
 
@@ -87,7 +130,7 @@ class Api {
         for (child in node.children) {
             when (child) {
                 is Expression -> {
-                   params += expressionHandler(child)
+                    params += expressionHandler(child)
                 }
             }
         }
@@ -162,6 +205,15 @@ class Api {
         return Info(InstructionType.ERROR)
     }
 
+    fun interpretInfos(infos : List<Info> ) {
+        for (child in infos) {
+            map[child.type]?.invoke(child)
+        }
+    }
+
+    fun getInfos(info : Info) : String {
+        return map[info.type]?.invoke(info)!!
+    }
 
     fun toIR(tree: AST) : Ir {
         for (node in tree.nodes) {
@@ -171,15 +223,8 @@ class Api {
                 when (child) {
                     is TopExpr -> {
                         val infos = topExprHandler(child)
-
-                        main.setMain("main")
-                        val f = main.addFunction(LLVMInt32Type(), "main", arrayOf(LLVMInt128Type()))
-                        main.addFunction(LLVMInt32Type(), infos[0].value, arrayOf(LLVMInt32Type()))
-                        val e = f.addBlock("entry")
-
-                        println("function : " + infos[0].value + " avec arg : " + infos[0].expressions[0].value)
-                        e.append(infos[0].value, arrayOf("call", infos[0].value, infos[0].expressions[0].value))
-                        println("Top expr : " + infos[0].dump())
+                        main.addFunction(LLVMInt32Type(), "putchar", arrayOf(LLVMInt32Type()))
+                        interpretInfos(infos)
                     }
                     is LocalDef -> {
                         localDefHandler(child)
@@ -195,7 +240,6 @@ class Api {
         return ir
     }
 
-
     fun jit(tree: AST) {
         val ir = toIR(tree)
         val jit = ir.jit()
@@ -208,6 +252,8 @@ class Api {
         LLVMInitializeNativeAsmParser()
         LLVMInitializeNativeDisassembler()
         LLVMInitializeNativeTarget()
+        main.setMain("main")
+
     }
 
     fun grok(args: Array<String>) {
