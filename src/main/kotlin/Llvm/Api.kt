@@ -1,156 +1,167 @@
 package Llvm
 
 import Parser.*
+import jdk.nashorn.internal.ir.IfNode
 import org.bytedeco.javacpp.*
 import org.bytedeco.javacpp.LLVM.*
 import java.lang.Thread.sleep
+import javax.sound.sampled.Line
 
 class Api {
     val ir = Ir()
     val main = ir.createModule("main")
 
-    private fun expressionsHandler(node: Expressions) {
+    private fun topExprHandler(node: TopExpr) : List<Info> {
+        return expressionsHandler(node.children[0] as Expressions)
+    }
+
+    private fun localDefHandler(node: LocalDef) {}
+
+    private fun expressionsHandler(node: Expressions) : List<Info> {
+        var expr : List<Info> = emptyList()
         for (child in node.children) {
             when (child) {
                 is ForExpr -> {
-                    forExprHandler(child)
+                    expr += forExprHandler(child)
                 }
                 is WhileExpr -> {
-                    whileExprHandler(child)
+                    expr += whileExprHandler(child)
                 }
                 is IfExpr -> {
-                    ifExprHandler(child)
+                    expr += ifExprHandler(child)
                 }
                 is Expression -> {
-                    expressionHandler(child)
+                    expr += expressionHandler(child)
                 }
             }
         }
+        return expr
     }
 
-    private fun expressionHandler(node: Expression) {
-
+    private fun expressionHandler(node: Expression) : List<Info> {
+        var expr : List<Info> = emptyList()
         for (child in node.children) {
             when (child) {
                 is Unary -> {
-                    unaryHandler(child)
+                    expr += unaryHandler(child)
                 }
                 is BinOp -> {
-                    binOpHandler(child)
+                    expr += binOpHandler(child)
                 }
             }
         }
+        return expr
     }
 
-    private fun binOpHandler(node: BinOp) {}
+    private fun binOpHandler(node: BinOp) : Info {return Info(InstructionType.ERROR)}
 
-    private fun unaryHandler(node: Unary) {
-        for (child in node.children) {
-            when (child) {
+    private fun unaryHandler(node: Unary) : Info {
+        val child = node.children[0]
+        return when (child) {
                 is UnOp -> {
-                    unOpHandler(child)
+                     unOpHandler(child)
                 }
                 is PostFix -> {
                     postFixHandler(child)
                 }
-            }
+                else -> Info(InstructionType.ERROR)
         }
     }
 
-    private fun postFixHandler(node: PostFix) {
+
+    private fun postFixHandler(node: PostFix) : Info {
         println("postFix")
         val primaryChild = node.children[0] as Primary
-        primaryHandler(primaryChild)
+        val primaryInfo = primaryHandler(primaryChild)
         if (node.children.size > 1) {
             val callExprChild = node.children[1] as CallExpr
-            callExprHandler(callExprChild)
+            val callExprInfo = callExprHandler(callExprChild)
+            return (Info(InstructionType.CALL_FUNC, primaryInfo.value, *callExprInfo.toTypedArray()));
         }
+        return (primaryInfo)
     }
 
-    private fun callExprHandler(node: CallExpr) {
+    private fun callExprHandler(node: CallExpr) : List<Info> {
         println("callExpr")
+        var params : List<Info> = emptyList()
         for (child in node.children) {
             when (child) {
                 is Expression -> {
-                    expressionHandler(child)
+                   params += expressionHandler(child)
                 }
             }
         }
+        return params
     }
 
-    private fun primaryHandler(node: Primary) {
+    private fun primaryHandler(node: Primary) : Info {
         println("primary")
-        for (child in node.children) {
-            when (child) {
-                is Identifier -> {
-                    identifierHandler(child)
-                }
-                is Literal -> {
-                    literalHandler(child)
-                }
-                is ParenExpr -> {
-                    parenExprHandler(child)
-                }
+        val child = node.children[0]
+        return when (child) {
+            is Identifier -> {
+                identifierHandler(child)
             }
+            is Literal -> {
+                literalHandler(child)
+            }
+            is ParenExpr -> {
+                parenExprHandler(child)
+            }
+            else -> Info(InstructionType.ERROR)
         }
     }
 
-    private fun parenExprHandler(node: ParenExpr) {}
+    private fun parenExprHandler(node: ParenExpr) : Info {return Info(InstructionType.ERROR)}
 
-    private fun literalHandler(node: Literal) {
+    private fun literalHandler(node: Literal) : Info {
         println("literal")
-        for (child in node.children) {
-            when (child) {
-                is HexadecimalConst -> {
-                    hexaDecimalConstHandler(child)
-                }
-                is DecimalConst -> {
-                    decimalConstHandler(child)
-                }
-                is OctalConst -> {
-                    octalConstHandler(child)
-                }
-                is DoubleConst -> {
-                    doubleConstHandler(child)
-                }
+        val child = node.children[0]
+        return when (child) {
+            is HexadecimalConst -> {
+                hexaDecimalConstHandler(child)
             }
+            is DecimalConst -> {
+                decimalConstHandler(child)
+            }
+            is OctalConst -> {
+                octalConstHandler(child)
+            }
+            is DoubleConst -> {
+                doubleConstHandler(child)
+            }
+            else -> Info(InstructionType.ERROR)
         }
     }
 
-    private fun hexaDecimalConstHandler(node: HexadecimalConst) {}
+    private fun hexaDecimalConstHandler(node: HexadecimalConst) : Info { return Info(InstructionType.ERROR)}
 
     private fun decimalConstHandler(node: DecimalConst) : Info {
         println("decimal")
-        return Info(node.s)
+        return Info(InstructionType.DEC_VALUE, node.s)
     }
 
-    private fun octalConstHandler(node: OctalConst) {}
+    private fun octalConstHandler(node: OctalConst) : Info {return Info(InstructionType.OCT_VALUE)}
 
-    private fun doubleConstHandler(node: DoubleConst) {}
+    private fun doubleConstHandler(node: DoubleConst) : Info {return Info(InstructionType.DOUBLE_VALUE)}
 
     private fun identifierHandler(node: Identifier) : Info {
-        return Info(node.s)
+        return Info(InstructionType.VALUE, node.s)
     }
 
-    private fun unOpHandler(node: UnOp) {}
+    private fun unOpHandler(node: UnOp) : Info {return Info(InstructionType.ERROR)}
 
-    private fun forExprHandler(node: ForExpr) {
-
+    private fun forExprHandler(node: ForExpr) : Info {
+        return Info(InstructionType.ERROR)
     }
 
-    private fun ifExprHandler(node: IfExpr) {
-
+    private fun ifExprHandler(node: IfExpr) : Info {
+        return Info(InstructionType.ERROR)
     }
 
-    private fun whileExprHandler(node: WhileExpr) {
-
+    private fun whileExprHandler(node: WhileExpr) : Info {
+        return Info(InstructionType.ERROR)
     }
 
-    private fun topExprHandler(node: TopExpr) {
-        for (child in node.children) {
-            expressionsHandler(child as Expressions)
-        }
-    }
 
     fun toIR(tree: AST) : Ir {
         for (node in tree.nodes) {
@@ -159,7 +170,16 @@ class Api {
             for (child in def.children) {
                 when (child) {
                     is TopExpr -> {
-                        topExprHandler(child)
+                        val infos = topExprHandler(child)
+
+                        main.setMain("main")
+                        val f = main.addFunction(LLVMInt32Type(), "main", arrayOf(LLVMInt128Type()))
+                        main.addFunction(LLVMInt32Type(), infos[0].value, arrayOf(LLVMInt32Type()))
+                        val e = f.addBlock("entry")
+
+                        println("function : " + infos[0].value + " avec arg : " + infos[0].expressions[0].value)
+                        e.append(infos[0].value, arrayOf("call", infos[0].value, infos[0].expressions[0].value))
+                        println("Top expr : " + infos[0].dump())
                     }
                     is LocalDef -> {
                         localDefHandler(child)
@@ -175,7 +195,6 @@ class Api {
         return ir
     }
 
-    private fun localDefHandler(node: LocalDef) {}
 
     fun jit(tree: AST) {
         val ir = toIR(tree)

@@ -72,17 +72,20 @@ class Ir
                     }
             factory["call"] =
                     fun(identifier: String, args: Array<String>) : Boolean {
+                        println("blablabla ${args.size}")
                         if (args.size < 2)
                             return false
 
                         // TODO: Find all arguments for the call
 
                         val call_args = args.filterIndexed({ i, s -> i > 1}).map {
-                            func.search(it)
+                            func.search(it)?.let { it } ?: func.createConstInt(it)
                         }.toTypedArray()
 
+                        val targetFunc = func.module.functions[identifier]?._funLlvm
                         placeEditorAtMe()
-                        _content[identifier] = LLVMBuildCall(Builder.llvm, func._funLlvm, PointerPointer(*call_args), call_args.size, identifier)
+                        _content[identifier] = LLVMBuildCall(Builder.llvm, targetFunc!!, PointerPointer(*call_args), call_args.size, identifier)
+                        println("added new function call ${identifier} in module label ${func.identifier}" )
                         return true
                     }
             factory["jump"] =
@@ -151,6 +154,7 @@ class Ir
         fun append(identifier: String, args: Array<String>) : Boolean {
             if (args.size == 0)
                 return false
+
             val ret = factory[args[0]]?.invoke(identifier, args)
             if (ret == null)
                 return false
@@ -161,7 +165,8 @@ class Ir
     class Function constructor(val module: Module,
                                val type: LLVMTypeRef, val identifier: String, argTypes: Array<LLVMTypeRef>)
     {
-        val _funLlvm : LLVMValueRef = LLVMAddFunction(module._modLlvm, identifier, LLVMFunctionType(type, argTypes[0], argTypes.size, 0))
+        val _funLlvm : LLVMValueRef = LLVMAddFunction(module._modLlvm, identifier,
+                LLVMFunctionType(type, argTypes[0], argTypes.size, 0))
 
         var Blocks : MutableMap<String, Block> = mutableMapOf()
         init {

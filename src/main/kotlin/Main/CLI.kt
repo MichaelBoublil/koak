@@ -24,7 +24,7 @@ class CLI {
             }
             catch(e : Exception) {
                 System.err.println("Compilation Error.")
-//                e.printStackTrace()
+                e.printStackTrace()
             }
         }
     }
