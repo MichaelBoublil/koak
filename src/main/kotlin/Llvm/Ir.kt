@@ -284,24 +284,31 @@ class Ir
         return m
     }
 
-    fun jit(module: String = "")
+    fun jit(module: String = "") : MutableList<Jit>
     {
+        val list : MutableList<Jit> = mutableListOf()
         for (mod in modules) {
             if (module != "") {
                 val res = mod.value.jit()
                 println("JIT Of ${mod.value.identifier} is :\n$res")
+                list.add(res)
             } else {
                 if (module == mod.key) {
                     val res = mod.value.jit()
                     println("JIT Of ${mod.value.identifier} is :\n$res")
+                    list.add(res)
                 }
             }
         }
+        return list
     }
 
     fun compile(dest: String)
     {
-
+        val jits = jit()
+        for (jit in jits) {
+            
+        }
     }
 
     fun print()

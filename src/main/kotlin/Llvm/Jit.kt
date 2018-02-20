@@ -2,48 +2,85 @@ package Llvm
 
 import org.bytedeco.javacpp.*
 import org.bytedeco.javacpp.LLVM.*
+import org.bytedeco.javacpp.annotation.Cast
 
-class Jit constructor(val module: Ir.Module)
+class Jit constructor(val module: Ir.Module, val optLevel: Int = 2)
 {
+    val typeNames : MutableMap<LLVMTypeRef, String> = mutableMapOf()
+
     var value = "0"
     val error: BytePointer = BytePointer(null as Pointer?)
+    val filename = module.identifier
     val engine = LLVMExecutionEngineRef()
+    // Only for optimization !
+
+    val targetTriple = LLVMGetDefaultTargetTriple()
+    val machineRef = LLVMTargetRef()
+    val modulePass = LLVMCreatePassManager()
+
+
     init {
-        println("Creating JIT Engine for IR")
-        if (LLVMCreateJITCompilerForModule(engine, module._modLlvm, 2, error) != 0) {
+        val targetIndex = LLVMGetTargetFromTriple(targetTriple, machineRef, error)
+        val myMachine = LLVMCreateTargetMachine(machineRef, targetTriple.string, "generic", "", 0, 0, 0)
+        val machineDataLayout = LLVMCreateTargetDataLayout(myMachine)
+        LLVMSetModuleDataLayout(module._modLlvm, machineDataLayout)
+        var bp = BytePointer(filename)
+        LLVMTargetMachineEmitToFile(myMachine, module._modLlvm, bp, 1, error)
+        if (targetIndex != 0)
+            throw Exception(error.string)
+
+        LLVMInitializeAllTargetInfos();
+        LLVMInitializeAllTargets();
+        LLVMInitializeAllTargetMCs();
+        LLVMInitializeAllAsmParsers();
+        LLVMInitializeAllAsmPrinters();
+
+        typeNames[LLVMInt32Type()] = "int32"
+        typeNames[LLVMInt64Type()] = "int64"
+        typeNames[LLVMDoubleType()] = "double"
+
+        println("Creating JIT Engine for Module ${module.identifier}")
+        for (f in module.functions)
+            println("Containing ${f.key} : ${typeNames[f.value.type]}")
+
+        if (LLVMCreateJITCompilerForModule(engine, module._modLlvm, optLevel, error) != 0) {
             System.err.println(error.string)
             LLVMDisposeMessage(error)
             System.exit(-1)
         }
 
-        val pass = LLVMCreatePassManager()
-        LLVMAddConstantPropagationPass(pass)
-        LLVMAddInstructionCombiningPass(pass)
-        LLVMAddPromoteMemoryToRegisterPass(pass)
-        LLVMAddDemoteMemoryToRegisterPass(pass); // Demotes every possible value to memory
-        LLVMAddGVNPass(pass)
-        LLVMAddCFGSimplificationPass(pass)
-        LLVMRunPassManager(pass, module._modLlvm)
+        LLVMAddConstantPropagationPass(modulePass)
+        LLVMAddInstructionCombiningPass(modulePass)
+        LLVMAddPromoteMemoryToRegisterPass(modulePass)
+        LLVMAddDemoteMemoryToRegisterPass(modulePass); // Demotes every possible value to memory
+        LLVMAddGVNPass(modulePass)
+        LLVMAddCFGSimplificationPass(modulePass)
+        LLVMRunPassManager(modulePass, module._modLlvm)
 
-        // EXECUTE MISSING HERE
-
-        // Add to destructor of Ir or Api ?
-//        LLVMDisposePassManager(pass)
-        // LLVMDisposeBuilder(builder)
-//        LLVMDisposeExecutionEngine(engine)
+        // Ready to execute module ?
     }
 
-    fun execute(functionIdentifier: String = "", value: Int) : String
+    class ExecResult constructor(val content: String)
+    {
+        var source = ""
+    }
+
+    // TODO: Il faut utiliser modulePass
+    fun execute() : ExecResult
+    {
+        return ExecResult("Not Implemented Yet")
+    }
+
+    // TODO: il faudrait generer une pass fonction et l'utiliser ?
+    fun runFunction(functionIdentifier: String, args : Array<Int>) : ExecResult
     {
         var target = functionIdentifier
-        if (functionIdentifier == "")
-            target = module.main
-        val exec_args = LLVMCreateGenericValueOfInt(LLVMInt32Type(), value.toLong(), 0)
+        val exec_args = LLVMCreateGenericValueOfInt(LLVMInt32Type(), args[0].toLong(), 0)
+
         val exec_res = LLVMRunFunction(engine, module.functions[target]!!._funLlvm, 1, exec_args)
-        System.err.println()
-        val nbr = value.toLong()
-        System.err.println("; Running $target($nbr) with JIT...")
-        System.err.println("; Result: " + LLVMGenericValueToInt(exec_res, 0))
-        return LLVMGenericValueToInt(exec_res, 0).toString()
+        val res = ExecResult(LLVMGenericValueToInt(exec_res, 0).toString())
+
+        res.source = functionIdentifier
+        return res
     }
 }

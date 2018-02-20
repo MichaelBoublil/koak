@@ -1,7 +1,6 @@
 package Llvm
 
 import Parser.*
-import org.bytedeco.javacpp.*
 import org.bytedeco.javacpp.LLVM.*
 import java.lang.Thread.sleep
 
@@ -31,7 +30,7 @@ class Api {
         return ir
     }
 
-    fun jit(tree: AST) {
+    fun jit(tree: AST): MutableList<Jit> {
         val ir = toIR(tree)
         val jit = ir.jit()
         return jit
@@ -85,6 +84,10 @@ class Api {
 
         ir.verify()
         myMod.print()
-        ir.jit()
+        sleep(1000)
+        val arr = ir.jit("fac_module")
+        val res = arr[0].runFunction("myFactorial", arrayOf(5, 10))
+        println(res.content)
+        ir.compile("compiledIR")
     }
 }
