@@ -32,7 +32,30 @@ class Ir
         }
 
         init {
-            factory["compare ints"] =
+            factory["double !="] =
+                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+            factory["double >="] =
+                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+            factory["double <="] =
+                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+            factory["double <"] =
+                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+            factory["double >"] =
+                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+            factory["double =="] =
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildFCmp(Builder.llvm, LLVMIntEQ, first, second, identifier)
+                        return true
+                    }
+            factory["int =="] =
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 3)
                             return false
@@ -57,10 +80,12 @@ class Ir
                             func.search(it)?.let { it } ?: func.createConstInt(it)
                         }.toTypedArray()
 
-                        val targetFunc = func.module.functions[identifier]?._funLlvm
+                        val targetFunc = func.module.functions[args[1]]?._funLlvm
+                        if (targetFunc == null)
+                            throw Exception("Call to undefined function ${args[1]} at ${identifier}")
                         placeEditorAtMe()
                         _content[identifier] = LLVMBuildCall(Builder.llvm, targetFunc!!, PointerPointer(*call_args), call_args.size, identifier)
-                        println("added new function call ${identifier} in module label ${func.identifier}" )
+                        println("added new function call ${args[1]} in module label ${func.identifier} at ${identifier}" )
                         return true
                     }
             factory["jump"] =
@@ -97,16 +122,27 @@ class Ir
                                     func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]),
                                     func.getLocalVar(args[3])?.let { it } ?: func.search(args[3]),
                                     identifier)
+                        else if (args[1].compareTo("-") == 0)
+                            _content[identifier] = LLVMBuildSub(Builder.llvm,
+                                    func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]),
+                                    func.getLocalVar(args[3])?.let { it } ?: func.search(args[3]),
+                                    identifier)
+                        else if (args[1].compareTo("/") == 0) // assumed to double division
+                            _content[identifier] = LLVMBuildFDiv(Builder.llvm,
+                                    func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]),
+                                    func.getLocalVar(args[3])?.let { it } ?: func.search(args[3]),
+                                    identifier)
                         return true
                     }
             factory["return"] =
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 2)
                             return false
+                        placeEditorAtMe()
                         _content[identifier] = LLVMBuildRet(Builder.llvm, func.search(args[1]))
                         return true
                     }
-            factory["declare"] = fun(identifier: String, args: Array<String>) : Boolean {
+            factory["declare function"] = fun(identifier: String, args: Array<String>) : Boolean {
                 placeEditorAtMe()
 
                 return true
@@ -132,12 +168,12 @@ class Ir
         }
 
         fun append(identifier: String, args: Array<String>) : Boolean {
-            if (args.size == 0)
+            if (args.isEmpty())
                 return false
 
-            val ret = factory[args[0]]?.invoke(identifier, args)
-            if (ret == null)
-                return false
+            if (factory[args[0]] == null)
+                throw Exception("Invalid IR_API Call ${args[0]}")
+            val ret = factory[args[0]]?.let { it.invoke(identifier, args) } ?: false
             return ret
         }
     }
@@ -223,11 +259,15 @@ class Ir
         // search for instruction in any blocks of the function
         fun search(identifier: String, searchInLocal: Boolean = true) : LLVMValueRef?
         {
-            println("TEST")
             try {
-                return LLVMConstReal(LLVMDoubleType(), identifier.toDouble())
+                if (identifier.matches(Regex("^[0-9]+\\.[0-9]+$"))) {
+                    return LLVMConstReal(LLVMDoubleType(), identifier.toDouble())
+                } else if (identifier.matches(Regex("^[0-9]+$")))
+                    return LLVMConstInt(LLVMInt32Type(), identifier.toLong(), 0)
+                else if (identifier.matches(Regex("^-[0-9]+$")))
+                    return LLVMConstInt(LLVMInt32Type(), identifier.toLong(), 1)
             } catch (e: Exception) {
-                System.err.println("Search ${identifier} is not a long.")
+                System.err.println("Search ${identifier} cannot be converted to numeric type")
             }
             for (block in Blocks) {
                 for (inst in block.value._content)
@@ -248,6 +288,7 @@ class Ir
             knownNames[LLVMInt32Type()] = "int32"
             knownNames[LLVMInt64Type()] = "int64"
             knownNames[LLVMDoubleType()] = "double"
+            knownNames[LLVMVoidType()] = "void"
             print(knownNames[this.type] + "\t${identifier} (")
             if (argTypes.isNotEmpty()) {
                 var i = 0

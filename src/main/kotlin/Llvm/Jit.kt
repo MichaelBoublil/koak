@@ -3,8 +3,28 @@ package Llvm
 import org.bytedeco.javacpp.*
 import org.bytedeco.javacpp.LLVM.*
 import org.bytedeco.javacpp.annotation.Cast
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
-class Jit constructor(val module: Ir.Module, val optLevel: Int = 2)
+fun String.runCommand(workingDir: File): String? {
+    try {
+        val parts = this.split("\\s".toRegex())
+        val proc = ProcessBuilder(*parts.toTypedArray())
+                .directory(workingDir)
+                .redirectOutput(ProcessBuilder.Redirect.PIPE)
+                .redirectError(ProcessBuilder.Redirect.PIPE)
+                .start()
+
+        proc.waitFor(60, TimeUnit.MINUTES)
+        return proc.inputStream.bufferedReader().readText()
+    } catch(e: IOException) {
+        e.printStackTrace()
+        return null
+    }
+}
+
+class Jit constructor(val module: Ir.Module, val optLevel: Int = 2, verbose: Boolean = false)
 {
     val typeNames : MutableMap<LLVMTypeRef, String> = mutableMapOf()
 
@@ -24,8 +44,33 @@ class Jit constructor(val module: Ir.Module, val optLevel: Int = 2)
         val myMachine = LLVMCreateTargetMachine(machineRef, targetTriple.string, "generic", "", 0, 0, 0)
         val machineDataLayout = LLVMCreateTargetDataLayout(myMachine)
         LLVMSetModuleDataLayout(module._modLlvm, machineDataLayout)
-        var bp = BytePointer(filename)
+        var bp = BytePointer(filename + ".s")
+        LLVMTargetMachineEmitToFile(myMachine, module._modLlvm, bp, 0, error)
+        bp = BytePointer(filename + ".o")
         LLVMTargetMachineEmitToFile(myMachine, module._modLlvm, bp, 1, error)
+        var verboseAsString : String = ""
+        if (verbose)
+            verboseAsString = "--verbose"
+
+        // val llvmconfig = "`llvm-config --ldflags --system-libs --libs all`".runCommand(File("/usr/bin/"))
+        val llvmconfig = "`llvm-config --ldflags --system-libs --libs all`"
+        val command = "/usr/bin/ld.lld"
+        val args =
+                " -melf_x86_64" +
+                " -o $filename.ravioliravioligivemetheexecutableideservioli " +
+                " -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/crt1.o /usr/lib/crti.o " +
+                " -lc $filename.o /usr/lib/crtn.o " +
+                llvmconfig +
+                verboseAsString
+
+        val process = ProcessBuilder(command, args).start()
+
+//        println(command)
+////        println(Runtime.getRuntime().exec(command))
+//        val res = command.runCommand(File("/usr/bin"))
+//        if (res != null)
+//            println(res)
+
         if (targetIndex != 0)
             throw Exception(error.string)
 
@@ -75,9 +120,9 @@ class Jit constructor(val module: Ir.Module, val optLevel: Int = 2)
     fun runFunction(functionIdentifier: String, args : Array<Int>) : ExecResult
     {
         var target = functionIdentifier
-        val exec_args = LLVMCreateGenericValueOfInt(LLVMInt32Type(), args[0].toLong(), 0)
 
-        val exec_res = LLVMRunFunction(engine, module.functions[target]!!._funLlvm, 1, exec_args)
+        val exec_args = args.map { LLVMCreateGenericValueOfInt(LLVMInt32Type(), it.toLong(), 0) }.toTypedArray()
+        val exec_res = LLVMRunFunction(engine, module.functions[target]!!._funLlvm, args.size, exec_args[0])
         val res = ExecResult(LLVMGenericValueToInt(exec_res, 0).toString())
 
         res.source = functionIdentifier

@@ -433,7 +433,7 @@ class Api {
 //        val FacFalse = myFacFunction.addBlock("iffalse")
 //        val FacRet = myFacFunction.addBlock("end")
 
-        FacEntry.append("n == 1", arrayOf("compare ints", "n", "1"))
+        FacEntry.append("n == 1", arrayOf("int ==", "n", "1"))
         FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
 
         myFacFunction.createConstInt("-1")
@@ -449,13 +449,16 @@ class Api {
         FacRet.append("return result", arrayOf("return", "result"))
 
         // Important to set an entry point in the module for JIT
-        myMod.setMain("myFactorial")
+        val main = myMod.addFunction(LLVMInt32Type(), "main", arrayOf())
+        val entrypoint = main.addBlock("entrypoint")
+        entrypoint.append("ret", arrayOf("return", "0"))
+        myMod.setMain("main")
 
-        ir.verify()
         myMod.print()
+        ir.verify()
         sleep(1000)
         val arr = ir.jit("fac_module")
-        val res = arr[0].runFunction("myFactorial", arrayOf(5, 10))
+        val res = arr[0].runFunction("myFactorial", arrayOf(5))
         println(res.content)
         ir.compile("compiledIR")
     }
