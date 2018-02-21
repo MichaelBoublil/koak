@@ -75,9 +75,9 @@ class Jit constructor(val module: Ir.Module, val optLevel: Int = 2)
     fun runFunction(functionIdentifier: String, args : Array<Int>) : ExecResult
     {
         var target = functionIdentifier
-        val exec_args = LLVMCreateGenericValueOfInt(LLVMInt32Type(), args[0].toLong(), 0)
 
-        val exec_res = LLVMRunFunction(engine, module.functions[target]!!._funLlvm, 1, exec_args)
+        val exec_args = args.map { LLVMCreateGenericValueOfInt(LLVMInt32Type(), it.toLong(), 0) }.toTypedArray()
+        val exec_res = LLVMRunFunction(engine, module.functions[target]!!._funLlvm, args.size, exec_args[0])
         val res = ExecResult(LLVMGenericValueToInt(exec_res, 0).toString())
 
         res.source = functionIdentifier

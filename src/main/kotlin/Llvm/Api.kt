@@ -279,7 +279,7 @@ class Api {
 //        val FacFalse = myFacFunction.addBlock("iffalse")
 //        val FacRet = myFacFunction.addBlock("end")
 
-        FacEntry.append("n == 1", arrayOf("compare ints", "n", "1"))
+        FacEntry.append("n == 1", arrayOf("int ==", "n", "1"))
         FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
 
         myFacFunction.createConstInt("-1")
@@ -301,7 +301,7 @@ class Api {
         myMod.print()
         sleep(1000)
         val arr = ir.jit("fac_module")
-        val res = arr[0].runFunction("myFactorial", arrayOf(5, 10))
+        val res = arr[0].runFunction("myFactorial", arrayOf(5))
         println(res.content)
         ir.compile("compiledIR")
     }
