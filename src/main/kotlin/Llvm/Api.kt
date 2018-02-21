@@ -1,28 +1,238 @@
 package Llvm
 
 import Parser.*
+import jdk.nashorn.internal.ir.IfNode
+import org.bytedeco.javacpp.*
 import org.bytedeco.javacpp.LLVM.*
 import java.lang.Thread.sleep
+import javax.sound.sampled.Line
 
 class Api {
+    val ir = Ir()
+    val main = ir.createModule("main")
+    val mainFunction = main.addFunction(LLVMInt32Type(), "main");
+    val entry = mainFunction.addBlock("entry")
+    val map : Map<InstructionType, (Info) -> String> = mapOf(
+            (InstructionType.CALL_FUNC to {
+            info ->
+                var params = emptyList<String>()
+                for (param in info.expressions) {
+                    params += getInfos(param)
+                }
+                entry.append(info.value, arrayOf("call", info.value, *params.toTypedArray()))
+                info.value
+            }),
+            (InstructionType.DEC_VALUE to {
+                info ->
+                info.value
+            }),
+            (InstructionType.ASSIGNMENT to {
+                info ->
+                println("assign: " + info.expressions[0].value + ", to: " + info.expressions[1].value)
+                // entry.append(info.expressions[0].value, arrayOf("declare", info.expressions[1].value))
+                mainFunction.declareLocalVar(info.expressions[0].value, "double", info.expressions[1].value)
+                // /entry.append("b", arrayOf("binop", "+", info.expressions[1].value, "0"))
+                info.value
+            }),
+            (InstructionType.ADD to {
+                info ->
+                println("add: " + info.expressions[0].value + " and " + info.expressions[1].value)
+                entry.append("tmpadd", arrayOf("binop", "+", info.expressions[0].value, info.expressions[1].value))
+                entry.append("is5", arrayOf("compare ints", "tmpadd", "5"))
+                entry.append("jump", arrayOf("conditional jump", "is5", entry.identifier, entry.identifier))
+                info.value
+            })
+    )
+
+    private fun topExprHandler(node: TopExpr) : List<Info> {
+        return expressionsHandler(node.children[0] as Expressions)
+    }
+
+    private fun localDefHandler(node: LocalDef) {}
+
+    private fun expressionsHandler(node: Expressions) : List<Info> {
+        var expr : List<Info> = emptyList()
+        for (child in node.children) {
+            when (child) {
+                is ForExpr -> {
+                    expr += forExprHandler(child)
+                }
+                is WhileExpr -> {
+                    expr += whileExprHandler(child)
+                }
+                is IfExpr -> {
+                    expr += ifExprHandler(child)
+                }
+                is Expression -> {
+                    expr += expressionHandler(child)
+                }
+            }
+        }
+        return expr
+    }
+
+    private fun expressionHandler(node: Expression) : List<Info> {
+        var expr : List<Info> = emptyList()
+        for (child in node.children) {
+            when (child) {
+                is Unary -> {
+                    expr += unaryHandler(child)
+                }
+                is BinOp -> {
+                    expr += binOpHandler(child)
+                }
+            }
+        }
+        return expr
+    }
+
+    private fun binOpHandler(node: BinOp) : Info {
+        var instr = InstructionType.ERROR
+        when (node.s) {
+            "=" -> instr = InstructionType.ASSIGNMENT
+            "+" -> instr = InstructionType.ADD
+        }
+        return if (node.isRightAssoc)
+            Info(instr, node.s, unaryHandler(node.children[0] as Unary), *expressionHandler(node.children[1] as Expression).toTypedArray())
+        else
+            Info(instr, node.s, unaryHandler(node.children[0] as Unary), unaryHandler(node.children[1] as Unary))
+    }
+
+    private fun unaryHandler(node: Unary) : Info {
+        val child = node.children[0]
+        return when (child) {
+            is UnOp -> {
+                unOpHandler(child)
+            }
+            is PostFix -> {
+                postFixHandler(child)
+            }
+            else -> Info(InstructionType.ERROR)
+        }
+    }
+
+
+    private fun postFixHandler(node: PostFix) : Info {
+        println("postFix")
+        val primaryChild = node.children[0] as Primary
+        val primaryInfo = primaryHandler(primaryChild)
+        if (node.children.size > 1) {
+            val callExprChild = node.children[1] as CallExpr
+            val callExprInfo = callExprHandler(callExprChild)
+            return (Info(InstructionType.CALL_FUNC, primaryInfo.value, *callExprInfo.toTypedArray()));
+        }
+        return (primaryInfo)
+    }
+
+    private fun callExprHandler(node: CallExpr) : List<Info> {
+        println("callExpr")
+        var params : List<Info> = emptyList()
+        for (child in node.children) {
+            when (child) {
+                is Expression -> {
+                    params += expressionHandler(child)
+                }
+            }
+        }
+        return params
+    }
+
+    private fun primaryHandler(node: Primary) : Info {
+        println("primary")
+        val child = node.children[0]
+        return when (child) {
+            is Identifier -> {
+                identifierHandler(child)
+            }
+            is Literal -> {
+                literalHandler(child)
+            }
+            is ParenExpr -> {
+                parenExprHandler(child)
+            }
+            else -> Info(InstructionType.ERROR)
+        }
+    }
+
+    private fun parenExprHandler(node: ParenExpr) : Info {return Info(InstructionType.ERROR)}
+
+    private fun literalHandler(node: Literal) : Info {
+        println("literal")
+        val child = node.children[0]
+        return when (child) {
+            is HexadecimalConst -> {
+                hexaDecimalConstHandler(child)
+            }
+            is DecimalConst -> {
+                decimalConstHandler(child)
+            }
+            is OctalConst -> {
+                octalConstHandler(child)
+            }
+            is DoubleConst -> {
+                doubleConstHandler(child)
+            }
+            else -> Info(InstructionType.ERROR)
+        }
+    }
+
+    private fun hexaDecimalConstHandler(node: HexadecimalConst) : Info { return Info(InstructionType.ERROR)}
+
+    private fun decimalConstHandler(node: DecimalConst) : Info {
+        println("decimal")
+        return Info(InstructionType.DEC_VALUE, node.s)
+    }
+
+    private fun octalConstHandler(node: OctalConst) : Info {return Info(InstructionType.OCT_VALUE)}
+
+    private fun doubleConstHandler(node: DoubleConst) : Info {return Info(InstructionType.DOUBLE_VALUE)}
+
+    private fun identifierHandler(node: Identifier) : Info {
+        return Info(InstructionType.VALUE, node.s)
+    }
+
+    private fun unOpHandler(node: UnOp) : Info {return Info(InstructionType.ERROR)}
+
+    private fun forExprHandler(node: ForExpr) : Info {
+        return Info(InstructionType.ERROR)
+    }
+
+    private fun ifExprHandler(node: IfExpr) : Info {
+        return Info(InstructionType.ERROR)
+    }
+
+    private fun whileExprHandler(node: WhileExpr) : Info {
+        return Info(InstructionType.ERROR)
+    }
+
+    fun interpretInfos(infos : List<Info> ) {
+        for (child in infos) {
+            map[child.type]?.invoke(child)
+        }
+    }
+
+    fun getInfos(info : Info) : String {
+        return map[info.type]?.invoke(info)!!
+    }
+
     fun toIR(tree: AST) : Ir {
-        val ir = Ir()
-
-        val main = ir.createModule("main")
-
         for (node in tree.nodes) {
             val def = node as KDefs
 
             for (child in def.children) {
                 when (child) {
                     is TopExpr -> {
-
+                        val infos = topExprHandler(child)
+                        main.addFunction(LLVMInt32Type(), "putchar", arrayOf(LLVMInt32Type()))
+                        interpretInfos(infos)
+                    }
+                    is LocalDef -> {
+                        localDefHandler(child)
                     }
                     is LocalDef -> {
 
                     }
                     is ExtDef -> {
-
                     }
                 }
             }
@@ -42,6 +252,8 @@ class Api {
         LLVMInitializeNativeAsmParser()
         LLVMInitializeNativeDisassembler()
         LLVMInitializeNativeTarget()
+        main.setMain("main")
+
     }
 
     fun grok(args: Array<String>) {

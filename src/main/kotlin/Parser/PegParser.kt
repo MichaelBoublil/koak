@@ -143,18 +143,66 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isPrototype(str: String): Pair<String?, INode?> {
-        //TODO : ('unary' . decimal_const? / 'binary' . decimal_const? / indentifier) prototype_args
-        val str1 = epurSpace(str)
-        val ret = isIdentifier(str1)
+        //TODO : ('unary' . decimal_const? / 'binary' . decimal_const? / identifier) prototype_args
+        val str1 : String = epurSpace(str)
 
-        return when (ret.second) {
-            null -> Pair(str, null)
-            else -> {
-                val ret1 = isProtoArgs(ret.first)
-                return when (ret1.second) {
-                    null -> Pair(str, null)
+        when (str1.startsWith("unary")) {
+            true -> {
+                val ope = str1.drop(5).first()
+                val retDec = isDecimalConst(str1.drop(6), "")
+                when (retDec.second) {
+                    null -> {
+                        val ret1 = isProtoArgs(str1.drop(6))
+                        return when (ret1.second) {
+                            null -> Pair(str, null)
+                            else -> Pair(ret1.first, PrototypeArgs(Identifier("unary" + ope), ret1.second!!))
+                        }
+                    }
                     else -> {
-                        Pair(ret1.first, Prototype(ret.second!!, ret1.second!!))
+                        val ret1 = isProtoArgs(retDec.first)
+                        return when (ret1.second) {
+                            null -> Pair(str, null)
+                            else -> Pair(ret1.first, PrototypeArgs(Identifier("unary" + ope), retDec.second!!, ret1.second!!))
+                        }
+
+                    }
+                }
+            }
+            else -> {
+                when (str1.startsWith("binary")) {
+                    true -> {
+                        val ope = str1.drop(6).first()
+                        val retDec = isDecimalConst(str1.drop(7), "")
+                        when (retDec.second) {
+                            null -> {
+                                val ret1 = isProtoArgs(str1.drop(7))
+                                return when (ret1.second) {
+                                    null -> Pair(str, null)
+                                    else -> Pair(ret1.first, PrototypeArgs(Identifier("binary" + ope), ret1.second!!))
+                                }
+                            }
+                            else -> {
+                                val ret1 = isProtoArgs(retDec.first)
+                                return when (ret1.second) {
+                                    null -> Pair(str, null)
+                                    else -> Pair(ret1.first, PrototypeArgs(Identifier("binary" + ope), retDec.second!!, ret1.second!!))
+                                }
+
+                            }
+                        }
+                    }
+                    else -> {
+                        val ret = isIdentifier(str1)
+                        return when (ret.second) {
+                            null -> Pair(str, null)
+                            else -> {
+                                val ret1 = isProtoArgs(ret.first)
+                                return when (ret1.second) {
+                                    null -> Pair(str, null)
+                                    else -> Pair(ret1.first, Prototype(ret.second!!, ret1.second!!))
+                                }
+                            }
+                        }
                     }
                 }
             }
