@@ -8,13 +8,12 @@ import java.lang.Thread.sleep
 import javax.sound.sampled.Line
 
 class Api {
-    val ir = Ir()
-    val main = ir.createModule("main")
-    val mainFunction = main.addFunction(LLVMInt32Type(), "main");
-    val entry = mainFunction.addBlock("entry")
+    var ir = Ir()
+
     val map : Map<InstructionType, (Info) -> String> = mapOf(
             (InstructionType.CALL_FUNC to {
             info ->
+                val entry = ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!
                 var params = emptyList<String>()
                 for (param in info.expressions) {
                     params += getInfos(param)
@@ -28,6 +27,7 @@ class Api {
             }),
             (InstructionType.ASSIGNMENT to {
                 info ->
+                val mainFunction = ir.modules["main"]!!.functions["main"]!!
                 println("assign: " + info.expressions[0].value + ", to: " + info.expressions[1].value)
                 // entry.append(info.expressions[0].value, arrayOf("declare", info.expressions[1].value))
                 mainFunction.declareLocalVar(info.expressions[0].value, "double", info.expressions[1].value)
@@ -36,6 +36,7 @@ class Api {
             }),
             (InstructionType.ADD to {
                 info ->
+                val entry = ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!
                 println("add: " + info.expressions[0].value + " and " + info.expressions[1].value)
                 entry.append("tmpadd", arrayOf("binop", "+", info.expressions[0].value, info.expressions[1].value))
                 entry.append("is5", arrayOf("compare ints", "tmpadd", "5"))
@@ -215,7 +216,11 @@ class Api {
         return map[info.type]?.invoke(info)!!
     }
 
-    fun toIR(tree: AST) : Ir {
+    fun toIR(tree: AST, old : Ir? = null) : Ir {
+        if (old != null)
+            ir = old
+        val main = ir.modules["main"]?.let { it } ?: ir.createModule("main")
+        main.setMain("main")
         for (node in tree.nodes) {
             val def = node as KDefs
 
@@ -252,8 +257,6 @@ class Api {
         LLVMInitializeNativeAsmParser()
         LLVMInitializeNativeDisassembler()
         LLVMInitializeNativeTarget()
-        main.setMain("main")
-
     }
 
     fun grok(args: Array<String>) {

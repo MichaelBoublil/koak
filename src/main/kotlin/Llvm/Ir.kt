@@ -240,7 +240,7 @@ class Ir
                     if (v.key == identifier)
                         return v.value
             }
-            return null
+            throw Exception("Unresolved identifier ${identifier}")
         }
 
         fun print() {
@@ -280,6 +280,8 @@ class Ir
         fun addFunction(type: LLVMTypeRef,
                         identifier: String, argTypes: Array<LLVMTypeRef> = arrayOf()) : Function
         {
+            if (functions[identifier] != null)
+                return functions[identifier]!!
             val f = Function(this, type, identifier, argTypes)
             functions[f.identifier] = f
             return f
