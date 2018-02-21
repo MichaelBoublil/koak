@@ -34,12 +34,17 @@ class Api {
                 // /entry.append("b", arrayOf("binop", "+", info.expressions[1].value, "0"))
                 info.value
             }),
-            (InstructionType.ADD to {
+            (InstructionType.CALCULUS to {
                 info ->
                 val entry = ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!
-                println("add: " + info.expressions[0].value + " and " + info.expressions[1].value)
-                entry.append("tmpadd", arrayOf("binop", "+", info.expressions[0].value, info.expressions[1].value))
-                entry.append("is5", arrayOf("compare ints", "tmpadd", "5"))
+                println(info.value + ": " + info.expressions[0].value + " and " + info.expressions[1].value)
+                var params = emptyList<String>()
+                for (param in info.expressions) {
+                    params += getInfos(param)
+                }
+                val id = "tmp" + info.value + info.expressions[0].value + info.expressions[1].value
+                entry.append(id, arrayOf("binop", info.value, *params.toTypedArray()))
+                entry.append("is5", arrayOf("compare ints", id, "5"))
                 entry.append("jump", arrayOf("conditional jump", "is5", entry.identifier, entry.identifier))
                 info.value
             })
@@ -49,7 +54,94 @@ class Api {
         return expressionsHandler(node.children[0] as Expressions)
     }
 
-    private fun localDefHandler(node: LocalDef) {}
+    private fun localDefHandler(node: LocalDef) : Info {
+        println(node.dump())
+        val defs = defsHandler(node.children[0] as Defs)
+        return (Info(InstructionType.DEF_FUNC, defs[0].value, *defs.drop(1).toTypedArray()))
+        /*val myFacFunction = myMod.addFunction(LLVMInt32Type(), "myFactorial", arrayOf(LLVMInt32Type()))
+        myFacFunction.declareParamVar("n", 0)
+
+        // On pourrait faciliter la creation de plusieurs label d'un coup
+        // myFacFunction.bulkAddBlocks("entry", "iffalse", "end") (donc 4 lignes au lieu de 3... super !)
+        myFacFunction.addBlocks("entry", "iffalse", "end")
+        val FacEntry = myFacFunction.Blocks["entry"]!!
+        val FacFalse = myFacFunction.Blocks["iffalse"]!!
+        val FacRet = myFacFunction.Blocks["end"]!!
+//        val FacEntry = myFacFunction.addBlock("entry")
+//        val FacFalse = myFacFunction.addBlock("iffalse")
+//        val FacRet = myFacFunction.addBlock("end")
+
+        FacEntry.append("n == 1", arrayOf("compare ints", "n", "1"))
+        FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
+
+        myFacFunction.createConstInt("-1")
+        FacFalse.append("n - 1", arrayOf("binop", "+", "n", "-1"))
+        FacFalse.append("fac(n - 1)", arrayOf("call", myFacFunction.identifier, "n - 1"))
+        FacFalse.append("n * fac(n - 1)", arrayOf("binop", "*", "n", "fac(n - 1)"))
+        FacFalse.append("jump", arrayOf("jump", FacRet.identifier))
+
+        myFacFunction.createConstInt("1")
+        FacRet.append("result", arrayOf("phi int",
+                FacFalse.identifier, "n * fac(n - 1)",
+                FacEntry.identifier, "1"))
+        FacRet.append("return result", arrayOf("return", "result"))*/
+    }
+
+    private fun defsHandler(node: Defs) : List<Info> {
+        var expr : List<Info> = emptyList()
+        for (child in node.children) {
+            when (child) {
+                is Prototype -> {
+                    expr += prototypeHandler(child)
+                }
+                is Expressions -> {
+                    expr += expressionsHandler(child)
+                }
+            }
+        }
+        return expr
+    }
+
+    private fun prototypeHandler(node: Prototype): List<Info> {
+        var expr: List<Info> = emptyList()
+        for (child in node.children) {
+            when (child) {
+                is Identifier -> {
+                    expr += identifierHandler(child)
+                }
+                is PrototypeArgs -> {
+                    expr += prototypeArgsHandler(child)
+                }
+            }
+        }
+        return expr
+    }
+
+    private fun prototypeArgsHandler(node: PrototypeArgs): List<Info> {
+        var expr: List<Info> = emptyList()
+        for (child in node.children) {
+            when (child) {
+                is Identifier -> {
+                    expr += identifierHandler(child)
+                }
+                is VarType -> {
+                    expr += varTypeHandler(child)
+                }
+                is FunType -> {
+                    expr += funTypeHandler(child)
+                }
+            }
+        }
+        return expr
+    }
+
+    private fun varTypeHandler(node: VarType): Info {
+        return Info(InstructionType.VARTYPE, node.s)
+    }
+
+    private fun funTypeHandler(node: FunType): Info {
+        return Info(InstructionType.FUNTYPE, node.s)
+    }
 
     private fun expressionsHandler(node: Expressions) : List<Info> {
         var expr : List<Info> = emptyList()
@@ -91,12 +183,24 @@ class Api {
         var instr = InstructionType.ERROR
         when (node.s) {
             "=" -> instr = InstructionType.ASSIGNMENT
-            "+" -> instr = InstructionType.ADD
+            "+" -> instr = InstructionType.CALCULUS
+            "-" -> instr = InstructionType.CALCULUS
+            "*" -> instr = InstructionType.CALCULUS
+            "/" -> instr = InstructionType.CALCULUS
         }
         return if (node.isRightAssoc)
             Info(instr, node.s, unaryHandler(node.children[0] as Unary), *expressionHandler(node.children[1] as Expression).toTypedArray())
-        else
-            Info(instr, node.s, unaryHandler(node.children[0] as Unary), unaryHandler(node.children[1] as Unary))
+        else {
+            when (node.children[0]) {
+                is Unary -> Info(instr, node.s, unaryHandler(node.children[0] as Unary), unaryHandler(node.children[1] as Unary))
+                is BinOp -> Info(instr, node.s, binOpHandler(node.children[0] as BinOp), unaryHandler(node.children[1] as Unary))
+                else -> Info(InstructionType.ERROR)
+            }
+
+
+        }
+
+
     }
 
     private fun unaryHandler(node: Unary) : Info {
@@ -111,7 +215,6 @@ class Api {
             else -> Info(InstructionType.ERROR)
         }
     }
-
 
     private fun postFixHandler(node: PostFix) : Info {
         println("postFix")
@@ -225,6 +328,7 @@ class Api {
             val def = node as KDefs
 
             for (child in def.children) {
+                println("lala")
                 when (child) {
                     is TopExpr -> {
                         val infos = topExprHandler(child)
@@ -232,9 +336,8 @@ class Api {
                         interpretInfos(infos)
                     }
                     is LocalDef -> {
-                        localDefHandler(child)
-                    }
-                    is LocalDef -> {
+                        val infos = localDefHandler(child)
+                        infos.dump()
 
                     }
                     is ExtDef -> {

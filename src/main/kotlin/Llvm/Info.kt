@@ -6,11 +6,14 @@ enum class InstructionType {
     ERROR,
     CALL_FUNC,
     ASSIGNMENT,
-    ADD,
+    DEF_FUNC,
+    CALCULUS,
     VALUE,
     DEC_VALUE,
     DOUBLE_VALUE,
-    OCT_VALUE
+    OCT_VALUE,
+    VARTYPE,
+    FUNTYPE
 }
 
 class Info(val type : InstructionType, val value : String = "default value", vararg val expressions : Info) {
