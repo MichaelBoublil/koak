@@ -5,17 +5,8 @@ import org.bytedeco.javacpp.LLVM.*
 import org.bytedeco.javacpp.annotation.Cast
 import java.io.File
 import java.io.IOException
+import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
-
-object Linker {
-    fun init() {}
-
-    val link_command = "ld.lld  -melf_x86_64 -o $1 -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/crt1.o /usr/lib/crti.o  -lc $1.o /usr/lib/crtn.o `llvm-config --ldflags --system-libs --libs all`"
-    val edit_rights = "chmod +w $1"
-    init {
-
-    }
-}
 
 fun String.runCommand(workingDir: File): String? {
     try {
@@ -36,10 +27,6 @@ fun String.runCommand(workingDir: File): String? {
 
 class Jit constructor(val module: Ir.Module, val filename : String = "a.out", val optLevel: Int = 2, verbose: Boolean = true)
 {
-    init {
-        Linker.init()
-    }
-
     val typeNames : MutableMap<LLVMTypeRef, String> = mutableMapOf()
 
     val error: BytePointer = BytePointer(null as Pointer?)
@@ -65,26 +52,26 @@ class Jit constructor(val module: Ir.Module, val filename : String = "a.out", va
         bp = BytePointer(filename + ".o")
         LLVMTargetMachineEmitToFile(myMachine, module._modLlvm, bp, 1, error)
         println("Creating object... $filename.o")
-        var verboseAsString : String = ""
-        if (verbose)
-            verboseAsString = "--verbose"
-
-        var llvmconfig = "\\`llvm-config --ldflags --system-libs --libs all\\`"
-        llvmconfig = "-L/usr/lib" +
-        "-I/usr/include -march=x86-64 -mtune=generic -O2 -pipe -fstack-protector-strong -fno-plt -fPIC -Werror=date-time -Wall -W -Wno-unused-parameter -Wwrite-strings -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-comment -ffunction-sections -fdata-sections -O3 -DNDEBUG -DLLVM_BUILD_GLOBAL_ISEL -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS" +
-        "-lLLVM-5.0"
-
-        val command = "ld.lld"
-        val args =
-                " -melf_x86_64" +
-                        " -o $filename.ravioliravioligivemetheexecutableideservioli " +
-                        " -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/crt1.o /usr/lib/crti.o " +
-                        " -lc $filename.o /usr/lib/crtn.o " +
-                        llvmconfig + " "
-                        verboseAsString
-        command.runCommand(File("/usr/bin"))
-        println("Running linker $command $args")
-        val process = ProcessBuilder("./koaklinker.sh", filename).start()
+//        var verboseAsString : String = ""
+//        if (verbose)
+//            verboseAsString = "--verbose"
+//
+//        var llvmconfig = "\\`llvm-config --ldflags --system-libs --libs all\\`"
+//        llvmconfig = "-L/usr/lib" +
+//        "-I/usr/include -march=x86-64 -mtune=generic -O2 -pipe -fstack-protector-strong -fno-plt -fPIC -Werror=date-time -Wall -W -Wno-unused-parameter -Wwrite-strings -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-comment -ffunction-sections -fdata-sections -O3 -DNDEBUG -DLLVM_BUILD_GLOBAL_ISEL -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS" +
+//        "-lLLVM-5.0"
+//
+//        val command = "ld.lld"
+//        val args =
+//                " -melf_x86_64" +
+//                        " -o $filename.ravioliravioligivemetheexecutableideservioli " +
+//                        " -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/crt1.o /usr/lib/crti.o " +
+//                        " -lc $filename.o /usr/lib/crtn.o " +
+//                        llvmconfig + " "
+//                        verboseAsString
+//        command.runCommand(File("/usr/bin"))
+//        println("Running linker $command $args")
+        val process = ProcessBuilder("./linker.sh", filename).start()
 
 //        println(command)
 ////        println(Runtime.getRuntime().exec(command))
