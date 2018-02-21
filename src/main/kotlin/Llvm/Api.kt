@@ -448,9 +448,13 @@ class Api {
                 FacEntry.identifier, "1"))
         FacRet.append("return result", arrayOf("return", "result"))
 
+        val putchar = myMod.addFunction(LLVMInt32Type(), "putchar", arrayOf(LLVMInt32Type()))
+        putchar.declareParamVar("c", 0)
+
         // Important to set an entry point in the module for JIT
         val main = myMod.addFunction(LLVMInt32Type(), "main", arrayOf())
         val entrypoint = main.addBlock("entrypoint")
+        entrypoint.append("call putchar", arrayOf("call", "putchar", "97"))
         entrypoint.append("ret", arrayOf("return", "0"))
         myMod.setMain("main")
 

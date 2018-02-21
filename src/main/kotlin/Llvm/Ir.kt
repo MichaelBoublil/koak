@@ -84,6 +84,7 @@ class Ir
                         if (targetFunc == null)
                             throw Exception("Call to undefined function ${args[1]} at ${identifier}")
                         placeEditorAtMe()
+
                         _content[identifier] = LLVMBuildCall(Builder.llvm, targetFunc!!, PointerPointer(*call_args), call_args.size, identifier)
                         println("added new function call ${args[1]} in module label ${func.identifier} at ${identifier}" )
                         return true
@@ -328,9 +329,9 @@ class Ir
             return f
         }
 
-        fun jit(): Jit
+        fun jit(dest: String = "a.out"): Jit
         {
-            val jit = Jit(this)
+            val jit = Jit(this, dest)
             return jit
         }
 
@@ -412,9 +413,9 @@ class Ir
 
     fun compile(dest: String)
     {
-        val jits = jit()
-        for (jit in jits) {
-            
+        for (mod in modules) {
+            println("Compiling module ${mod.key}")
+            mod.value.jit(dest)
         }
     }
 

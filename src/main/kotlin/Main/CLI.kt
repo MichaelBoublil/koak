@@ -18,20 +18,29 @@ class CLI {
         while (true) {
             print("?> ")
             val inputString = readLine() ?: break
-            parser.setString(inputString)
-            try {
-                val ast = parser.parse()
-                if (ast.nodes.isEmpty())
-                    println("Syntax Error")
-                else {
-                    println(ast.dump())
-                    ir = llvm.toIR(ast, ir)
-                    ir.print()
+
+            val isCompileCommand = inputString.matches(Regex("^compile \\w+$"))
+            if (isCompileCommand) {
+                val outputFile = inputString.replace("compile ", "")
+                println("You wish to compile to " + outputFile)
+                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
+                ir.verify()
+                ir.compile(outputFile)
+            } else {
+                parser.setString(inputString)
+                try {
+                    val ast = parser.parse()
+                    if (ast.nodes.isEmpty())
+                        println("Syntax Error")
+                    else {
+                        println(ast.dump())
+                        ir = llvm.toIR(ast, ir)
+                        ir.print()
+                    }
+                } catch (e: Exception) {
+                    System.err.println("Compilation Error.")
+                    e.printStackTrace()
                 }
-            }
-            catch(e : Exception) {
-                System.err.println("Compilation Error.")
-                e.printStackTrace()
             }
         }
     }
