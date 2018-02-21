@@ -138,10 +138,11 @@ class Ir
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 2)
                             return false
+                        placeEditorAtMe()
                         _content[identifier] = LLVMBuildRet(Builder.llvm, func.search(args[1]))
                         return true
                     }
-            factory["declare"] = fun(identifier: String, args: Array<String>) : Boolean {
+            factory["declare function"] = fun(identifier: String, args: Array<String>) : Boolean {
                 placeEditorAtMe()
 
                 return true

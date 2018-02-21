@@ -295,10 +295,13 @@ class Api {
         FacRet.append("return result", arrayOf("return", "result"))
 
         // Important to set an entry point in the module for JIT
-        myMod.setMain("myFactorial")
+        val main = myMod.addFunction(LLVMInt32Type(), "main", arrayOf())
+        val entrypoint = main.addBlock("entrypoint")
+        entrypoint.append("ret", arrayOf("return", "0"))
+        myMod.setMain("main")
 
-        ir.verify()
         myMod.print()
+        ir.verify()
         sleep(1000)
         val arr = ir.jit("fac_module")
         val res = arr[0].runFunction("myFactorial", arrayOf(5))
