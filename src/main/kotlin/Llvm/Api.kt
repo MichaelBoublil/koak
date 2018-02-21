@@ -15,28 +15,57 @@ class Api {
             info ->
                 val entry = ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!
                 var params = emptyList<String>()
-                for (param in info.expressions) {
-                    params += getInfos(param)
+                var i = 0
+                while (i < info.attributes.size - 1) {
+                    params += getInfos(info.attributes[i.toString()]!!)
+                    i++
                 }
-                entry.append(info.value, arrayOf("call", info.value, *params.toTypedArray()))
+
+                println("la fonction : " + (info.attributes["func"]!!).value)
+                println("i : " + i)
+                println("param : " + params[0])
+                entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
                 info.value
             }),
+
             (InstructionType.DEC_VALUE to {
                 info ->
                 info.value
             }),
+            (InstructionType.EXPRESSION to {
+                info ->
+                var i = 0
+                while (i < info.attributes.size) {
+                    getInfos(info.attributes[i.toString()]!!)
+                    i++
+                }
+                info.value
+
+            }),
+            (InstructionType.BODY to {
+                info ->
+                var i = 0
+                while (i < info.attributes.size) {
+                    getInfos(info.attributes[i.toString()]!!)
+                    i++
+                }
+                info.value
+
+            }),
             (InstructionType.ASSIGNMENT to {
                 info ->
-                val mainFunction = ir.modules["main"]!!.functions["main"]!!
+                info.value
+                /*val mainFunction = ir.modules["main"]!!.functions["main"]!!
                 println("assign: " + info.expressions[0].value + ", to: " + info.expressions[1].value)
                 // entry.append(info.expressions[0].value, arrayOf("declare", info.expressions[1].value))
                 mainFunction.declareLocalVar(info.expressions[0].value, "double", info.expressions[1].value)
                 // /entry.append("b", arrayOf("binop", "+", info.expressions[1].value, "0"))
-                info.value
+                info.value*/
             }),
             (InstructionType.CALCULUS to {
                 info ->
-                val entry = ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!
+                info.value
+                /*val entry = ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!
                 println(info.value + ": " + info.expressions[0].value + " and " + info.expressions[1].value)
                 var params = emptyList<String>()
                 for (param in info.expressions) {
@@ -46,18 +75,19 @@ class Api {
                 entry.append(id, arrayOf("binop", info.value, *params.toTypedArray()))
                 entry.append("is5", arrayOf("compare ints", id, "5"))
                 entry.append("jump", arrayOf("conditional jump", "is5", entry.identifier, entry.identifier))
-                info.value
+                info.value*/
             })
     )
 
-    private fun topExprHandler(node: TopExpr) : List<Info> {
+    private fun topExprHandler(node: TopExpr) : Info {
         return expressionsHandler(node.children[0] as Expressions)
     }
 
     private fun localDefHandler(node: LocalDef) : Info {
         println(node.dump())
         val defs = defsHandler(node.children[0] as Defs)
-        return (Info(InstructionType.DEF_FUNC, defs[0].value, *defs.drop(1).toTypedArray()))
+        return defs
+        //return (Info(InstructionType.DEF_FUNC, defs[0].value, *defs.drop(1).toTypedArray()))
         /*val myFacFunction = myMod.addFunction(LLVMInt32Type(), "myFactorial", arrayOf(LLVMInt32Type()))
         myFacFunction.declareParamVar("n", 0)
 
@@ -87,52 +117,47 @@ class Api {
         FacRet.append("return result", arrayOf("return", "result"))*/
     }
 
-    private fun defsHandler(node: Defs) : List<Info> {
-        var expr : List<Info> = emptyList()
+    private fun defsHandler(node: Defs) : Info {
+        val info  = Info(InstructionType.DEF_FUNC)
         for (child in node.children) {
             when (child) {
                 is Prototype -> {
-                    expr += prototypeHandler(child)
+                    val expr = prototypeHandler(child)
+                    info.attributes += expr.attributes
                 }
                 is Expressions -> {
-                    expr += expressionsHandler(child)
+                    info.attributes["body"] = expressionsHandler(child)
                 }
             }
         }
-        return expr
+        return info
     }
 
-    private fun prototypeHandler(node: Prototype): List<Info> {
-        var expr: List<Info> = emptyList()
-        for (child in node.children) {
-            when (child) {
-                is Identifier -> {
-                    expr += identifierHandler(child)
-                }
-                is PrototypeArgs -> {
-                    expr += prototypeArgsHandler(child)
-                }
-            }
-        }
-        return expr
+    private fun prototypeHandler(node: Prototype): Info {
+        val info = Info(InstructionType.PROTOTYPE)
+        info.attributes["funName"] = identifierHandler(node.children[0] as Identifier)
+        info.attributes += prototypeArgsHandler(node.children[1] as PrototypeArgs).attributes
+        return info
     }
 
-    private fun prototypeArgsHandler(node: PrototypeArgs): List<Info> {
-        var expr: List<Info> = emptyList()
+    private fun prototypeArgsHandler(node: PrototypeArgs): Info {
+        val prototype = Info(InstructionType.PROTOARGS)
+        var paramNb = 0
         for (child in node.children) {
             when (child) {
-                is Identifier -> {
-                    expr += identifierHandler(child)
-                }
-                is VarType -> {
-                    expr += varTypeHandler(child)
+                is Args -> {
+                    val param = Info(InstructionType.PARAM)
+                    param.attributes["name"] = identifierHandler(child.children[0] as Identifier)
+                    param.attributes["type"] = varTypeHandler(child.children[1] as VarType)
+                    prototype.attributes["param" + paramNb] = param
+                    paramNb += 1
                 }
                 is FunType -> {
-                    expr += funTypeHandler(child)
+                    prototype.attributes["returnType"] = funTypeHandler(child)
                 }
             }
         }
-        return expr
+        return prototype
     }
 
     private fun varTypeHandler(node: VarType): Info {
@@ -143,63 +168,82 @@ class Api {
         return Info(InstructionType.FUNTYPE, node.s)
     }
 
-    private fun expressionsHandler(node: Expressions) : List<Info> {
-        var expr : List<Info> = emptyList()
+    private fun expressionsHandler(node: Expressions) : Info {
+        val expr = Info(InstructionType.BODY)
+        var i = 0
         for (child in node.children) {
             when (child) {
                 is ForExpr -> {
-                    expr += forExprHandler(child)
+                    expr.attributes["expr"+i] = forExprHandler(child)
+
                 }
                 is WhileExpr -> {
-                    expr += whileExprHandler(child)
+                    expr.attributes["expr"+i] = whileExprHandler(child)
                 }
                 is IfExpr -> {
-                    expr += ifExprHandler(child)
+                    expr.attributes["expr"+i] = ifExprHandler(child)
                 }
                 is Expression -> {
-                    expr += expressionHandler(child)
+                    expr.attributes["expr"+i] = expressionHandler(child)
                 }
+                else -> i -= 1
             }
+            i+= 1
         }
         return expr
     }
 
-    private fun expressionHandler(node: Expression) : List<Info> {
-        var expr : List<Info> = emptyList()
+    private fun expressionHandler(node: Expression) : Info {
+        val expr = Info(InstructionType.EXPRESSION)
+        var i = 0
         for (child in node.children) {
+
             when (child) {
                 is Unary -> {
-                    expr += unaryHandler(child)
+                    expr.attributes[i.toString()] = unaryHandler(child)
                 }
                 is BinOp -> {
-                    expr += binOpHandler(child)
+                    expr.attributes[i.toString()] = binOpHandler(child)
                 }
+                else -> i -= 1
             }
+            i += 1
         }
         return expr
     }
 
     private fun binOpHandler(node: BinOp) : Info {
         var instr = InstructionType.ERROR
-        when (node.s) {
-            "=" -> instr = InstructionType.ASSIGNMENT
-            "+" -> instr = InstructionType.CALCULUS
-            "-" -> instr = InstructionType.CALCULUS
-            "*" -> instr = InstructionType.CALCULUS
-            "/" -> instr = InstructionType.CALCULUS
+        when (node.s.first()) {
+            '=' -> instr = InstructionType.ASSIGNMENT
+            in "+-*/" -> instr = InstructionType.CALCULUS
         }
-        return if (node.isRightAssoc)
-            Info(instr, node.s, unaryHandler(node.children[0] as Unary), *expressionHandler(node.children[1] as Expression).toTypedArray())
+        return if (node.isRightAssoc) {
+            val info = Info(instr)
+            info.attributes["ope"] = Info(InstructionType.VALUE, node.s)
+            info.attributes["lvalue"] = unaryHandler(node.children[0] as Unary)
+            info.attributes["rvalue"] = expressionHandler(node.children[1] as Expression)
+            info
+        }
         else {
             when (node.children[0]) {
-                is Unary -> Info(instr, node.s, unaryHandler(node.children[0] as Unary), unaryHandler(node.children[1] as Unary))
-                is BinOp -> Info(instr, node.s, binOpHandler(node.children[0] as BinOp), unaryHandler(node.children[1] as Unary))
+                is Unary -> {
+                    val info = Info(instr)
+                    info.attributes["ope"] = Info(InstructionType.VALUE, node.s)
+                    info.attributes["lvalue"] = unaryHandler(node.children[0] as Unary)
+                    info.attributes["rvalue"] = unaryHandler(node.children[1] as Unary)
+                    info
+                }
+                is BinOp -> {
+                    val info = Info(instr)
+                    info.attributes["ope"] = Info(InstructionType.VALUE, node.s)
+                    info.attributes["lvalue"] = binOpHandler(node.children[0] as BinOp)
+                    info.attributes["rvalue"] = unaryHandler(node.children[1] as Unary)
+                    info
+                }
                 else -> Info(InstructionType.ERROR)
             }
-
-
         }
-
 
     }
 
@@ -221,20 +265,25 @@ class Api {
         val primaryChild = node.children[0] as Primary
         val primaryInfo = primaryHandler(primaryChild)
         if (node.children.size > 1) {
+            val info = Info(InstructionType.CALL_FUNC)
+
             val callExprChild = node.children[1] as CallExpr
             val callExprInfo = callExprHandler(callExprChild)
-            return (Info(InstructionType.CALL_FUNC, primaryInfo.value, *callExprInfo.toTypedArray()));
+            info.attributes += callExprInfo.attributes
+            info.attributes["func"] = Info(InstructionType.VALUE, primaryInfo.value)
+            return info
         }
         return (primaryInfo)
     }
 
-    private fun callExprHandler(node: CallExpr) : List<Info> {
-        println("callExpr")
-        var params : List<Info> = emptyList()
+    private fun callExprHandler(node: CallExpr) : Info {
+        var i = 0
+        val params = Info(InstructionType.PARAM)
         for (child in node.children) {
             when (child) {
                 is Expression -> {
-                    params += expressionHandler(child)
+                    params.attributes += expressionHandler(child).attributes
+                    i+=1
                 }
             }
         }
@@ -309,9 +358,9 @@ class Api {
         return Info(InstructionType.ERROR)
     }
 
-    fun interpretInfos(infos : List<Info> ) {
-        for (child in infos) {
-            map[child.type]?.invoke(child)
+    fun interpretInfos(infos : Info ) {
+        for (child in infos.attributes) {
+            getInfos(child.value)
         }
     }
 
@@ -333,6 +382,8 @@ class Api {
                     is TopExpr -> {
                         val infos = topExprHandler(child)
                         main.addFunction(LLVMInt32Type(), "putchar", arrayOf(LLVMInt32Type()))
+                        infos.dump()
+                        println("====================")
                         interpretInfos(infos)
                     }
                     is LocalDef -> {

@@ -1,5 +1,7 @@
 package Llvm
 
+import java.util.*
+import kotlin.collections.HashMap
 import kotlin.math.exp
 
 enum class InstructionType {
@@ -13,16 +15,22 @@ enum class InstructionType {
     DOUBLE_VALUE,
     OCT_VALUE,
     VARTYPE,
-    FUNTYPE
+    FUNTYPE,
+    PROTOTYPE,
+    PARAM,
+    PROTOARGS,
+    BODY,
+    EXPRESSION
 }
 
-class Info(val type : InstructionType, val value : String = "default value", vararg val expressions : Info) {
+class Info(val type : InstructionType, val value : String = "default value", val attributes : MutableMap<String, Info> = mutableMapOf<String, Info>()) {
     fun dump() {
         println("Type : " + type.toString())
         println("Value : " + value)
         println("Children : ")
-        for (child in expressions) {
-            child.dump()
+        for ((i, s) in attributes) {
+            println(i)
+            s.dump()
         }
     }
 
