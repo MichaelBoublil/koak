@@ -1,11 +1,14 @@
 package Main
 
 import Llvm.Api
+import Llvm.Ir
+import org.bytedeco.javacpp.LLVM.LLVMInt32Type
 import java.io.File
 import java.io.InputStream
 
 class Compiler(file : String) {
     val parser = Parser.PegParser()
+    var ir = Ir()
 
     init {
         val inputStream: InputStream = File(file).inputStream()
@@ -13,6 +16,8 @@ class Compiler(file : String) {
 
         val finalInput = inputString.replace(Regex("#.*"), "")
         parser.setString(finalInput.replace(Regex("\n"), ""))
+        val main = ir.createModule("main").addFunction(LLVMInt32Type(), "main", arrayOf())
+        main.addBlock("entry")
     }
 
     fun compile() {
@@ -23,8 +28,11 @@ class Compiler(file : String) {
             else {
                 println(ast.dump())
                 val llvm = Api()
-                val ir = llvm.toIR(ast)
+                ir = llvm.toIR(ast, ir)
+                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
                 ir.print()
+                ir.verify()
+                ir.compile("a.out")
             }
         }
         catch(e : Exception) {
