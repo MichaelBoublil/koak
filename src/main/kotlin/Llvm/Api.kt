@@ -8,12 +8,14 @@ import java.lang.Thread.sleep
 import javax.sound.sampled.Line
 
 class Api {
+    var incrInstr = 0
     var ir = Ir()
+    var context = "main"
 
     val map : Map<InstructionType, (Info) -> String> = mapOf(
             (InstructionType.CALL_FUNC to {
             info ->
-                val entry = ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!
+                val entry = ir.modules["main"]!!.functions[context]!!.Blocks["entry"]!!
                 var params = emptyList<String>()
                 var i = 0
                 while (i < info.attributes.size - 1) {
@@ -21,26 +23,32 @@ class Api {
                     i++
                 }
 
-                println("la fonction : " + (info.attributes["func"]!!).value)
-                println("i : " + i)
-                println("param : " + params[0])
                 entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
-                info.value
+                info.attributes["func"]!!.value
             }),
 
             (InstructionType.DEC_VALUE to {
                 info ->
                 info.value
             }),
+            (InstructionType.VALUE to {
+                info ->
+                info.value
+            }),
             (InstructionType.EXPRESSION to {
                 info ->
+                var value : String = ""
                 var i = 0
                 while (i < info.attributes.size) {
-                    getInfos(info.attributes[i.toString()]!!)
+                    value = getInfos(info.attributes[i.toString()]!!)
                     i++
                 }
-                info.value
+                if (context != "main") {
+                    val entry = ir.modules["main"]!!.functions[context]!!.Blocks["entry"]!!
 
+                    entry.append("ret", arrayOf("return", value))
+                }
+                value
             }),
             (InstructionType.BODY to {
                 info ->
@@ -54,28 +62,70 @@ class Api {
             }),
             (InstructionType.ASSIGNMENT to {
                 info ->
+                val mainFunction = ir.modules["main"]!!.functions[context]!!
+                val lvalue = getInfos(info.attributes["lvalue"]!!)
+                val rvalue = getInfos(info.attributes["rvalue"]!!)
+
+                //TODO:type de variable en fonction de si int ou double.
+                mainFunction.declareLocalVar(lvalue, "int32", rvalue, true)
+
                 info.value
-                /*val mainFunction = ir.modules["main"]!!.functions["main"]!!
-                println("assign: " + info.expressions[0].value + ", to: " + info.expressions[1].value)
-                // entry.append(info.expressions[0].value, arrayOf("declare", info.expressions[1].value))
-                mainFunction.declareLocalVar(info.expressions[0].value, "double", info.expressions[1].value)
-                // /entry.append("b", arrayOf("binop", "+", info.expressions[1].value, "0"))
-                info.value*/
             }),
             (InstructionType.CALCULUS to {
                 info ->
-                info.value
-                /*val entry = ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!
-                println(info.value + ": " + info.expressions[0].value + " and " + info.expressions[1].value)
+                var instrType = ""
+                val keys = arrayOf("ope", "lvalue", "rvalue")
+                val entry = ir.modules["main"]!!.functions[context]!!.Blocks["entry"]!!
                 var params = emptyList<String>()
-                for (param in info.expressions) {
-                    params += getInfos(param)
+                var i = 0
+                while (i < keys.size) {
+                    params += getInfos(info.attributes[keys[i]]!!)
+                    i++
                 }
-                val id = "tmp" + info.value + info.expressions[0].value + info.expressions[1].value
-                entry.append(id, arrayOf("binop", info.value, *params.toTypedArray()))
-                entry.append("is5", arrayOf("compare ints", id, "5"))
-                entry.append("jump", arrayOf("conditional jump", "is5", entry.identifier, entry.identifier))
-                info.value*/
+                when (params[0]) {
+                    "+" ->  instrType = "tmpadd"
+                    "*" -> instrType = "tmpmul"
+                    "-" -> instrType = "tmpsub"
+                    "/" -> instrType = "tmpdiv"
+                }
+                entry.append(instrType, arrayOf("binop", params[0], *params.drop(1).toTypedArray()))
+                instrType
+            }),
+            (InstructionType.DEF_FUNC to {
+                info ->
+                val knownTypes : MutableMap<String, LLVMTypeRef> = mutableMapOf()
+                knownTypes["int"] = LLVMInt32Type()
+                knownTypes["double"] = LLVMDoubleType()
+                knownTypes["void"] = LLVMVoidType()
+
+                var i = 0
+                var paramName = emptyList<String>()
+                var paramType = emptyList<LLVMTypeRef>()
+                while (i < info.attributes.size - 3) {
+                    paramType += knownTypes[info.attributes["param" + i]!!.attributes["type"]!!.value]!!
+                    paramName += info.attributes["param" + i]!!.attributes["name"]!!.value
+                    i++
+                }
+
+                val myFunc = ir.modules["main"]!!.
+                        addFunction(
+                                knownTypes[info.attributes["returnType"]!!.value]!!,
+                                info.attributes["funName"]!!.value,
+                                arrayOf(*paramType.toTypedArray())
+                                )
+                i = 0
+                for (param in paramName) {
+                    myFunc.declareParamVar(param, i++)
+                }
+                val entry = myFunc.addBlock("entry")
+                context = info.attributes["funName"]!!.value
+                getInfos(info.attributes["body"]!!)
+                context = "main"
+
+//
+//                val entry = ir.modules["main"]!!.functions[context]!!.Blocks["entry"]!!
+//                myFacFunction.addBlocks("entry", "iffalse", "end")
+                info.value
             })
     )
 
@@ -84,37 +134,8 @@ class Api {
     }
 
     private fun localDefHandler(node: LocalDef) : Info {
-        println(node.dump())
         val defs = defsHandler(node.children[0] as Defs)
         return defs
-        //return (Info(InstructionType.DEF_FUNC, defs[0].value, *defs.drop(1).toTypedArray()))
-        /*val myFacFunction = myMod.addFunction(LLVMInt32Type(), "myFactorial", arrayOf(LLVMInt32Type()))
-        myFacFunction.declareParamVar("n", 0)
-
-        // On pourrait faciliter la creation de plusieurs label d'un coup
-        // myFacFunction.bulkAddBlocks("entry", "iffalse", "end") (donc 4 lignes au lieu de 3... super !)
-        myFacFunction.addBlocks("entry", "iffalse", "end")
-        val FacEntry = myFacFunction.Blocks["entry"]!!
-        val FacFalse = myFacFunction.Blocks["iffalse"]!!
-        val FacRet = myFacFunction.Blocks["end"]!!
-//        val FacEntry = myFacFunction.addBlock("entry")
-//        val FacFalse = myFacFunction.addBlock("iffalse")
-//        val FacRet = myFacFunction.addBlock("end")
-
-        FacEntry.append("n == 1", arrayOf("compare ints", "n", "1"))
-        FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
-
-        myFacFunction.createConstInt("-1")
-        FacFalse.append("n - 1", arrayOf("binop", "+", "n", "-1"))
-        FacFalse.append("fac(n - 1)", arrayOf("call", myFacFunction.identifier, "n - 1"))
-        FacFalse.append("n * fac(n - 1)", arrayOf("binop", "*", "n", "fac(n - 1)"))
-        FacFalse.append("jump", arrayOf("jump", FacRet.identifier))
-
-        myFacFunction.createConstInt("1")
-        FacRet.append("result", arrayOf("phi int",
-                FacFalse.identifier, "n * fac(n - 1)",
-                FacEntry.identifier, "1"))
-        FacRet.append("return result", arrayOf("return", "result"))*/
     }
 
     private fun defsHandler(node: Defs) : Info {
@@ -174,17 +195,17 @@ class Api {
         for (child in node.children) {
             when (child) {
                 is ForExpr -> {
-                    expr.attributes["expr"+i] = forExprHandler(child)
+                    expr.attributes[i.toString()] = forExprHandler(child)
 
                 }
                 is WhileExpr -> {
-                    expr.attributes["expr"+i] = whileExprHandler(child)
+                    expr.attributes[i.toString()] = whileExprHandler(child)
                 }
                 is IfExpr -> {
-                    expr.attributes["expr"+i] = ifExprHandler(child)
+                    expr.attributes[i.toString()] = ifExprHandler(child)
                 }
                 is Expression -> {
-                    expr.attributes["expr"+i] = expressionHandler(child)
+                    expr.attributes[i.toString()] = expressionHandler(child)
                 }
                 else -> i -= 1
             }
@@ -261,7 +282,6 @@ class Api {
     }
 
     private fun postFixHandler(node: PostFix) : Info {
-        println("postFix")
         val primaryChild = node.children[0] as Primary
         val primaryInfo = primaryHandler(primaryChild)
         if (node.children.size > 1) {
@@ -291,7 +311,6 @@ class Api {
     }
 
     private fun primaryHandler(node: Primary) : Info {
-        println("primary")
         val child = node.children[0]
         return when (child) {
             is Identifier -> {
@@ -310,7 +329,6 @@ class Api {
     private fun parenExprHandler(node: ParenExpr) : Info {return Info(InstructionType.ERROR)}
 
     private fun literalHandler(node: Literal) : Info {
-        println("literal")
         val child = node.children[0]
         return when (child) {
             is HexadecimalConst -> {
@@ -332,7 +350,6 @@ class Api {
     private fun hexaDecimalConstHandler(node: HexadecimalConst) : Info { return Info(InstructionType.ERROR)}
 
     private fun decimalConstHandler(node: DecimalConst) : Info {
-        println("decimal")
         return Info(InstructionType.DEC_VALUE, node.s)
     }
 
@@ -351,7 +368,18 @@ class Api {
     }
 
     private fun ifExprHandler(node: IfExpr) : Info {
-        return Info(InstructionType.ERROR)
+//        val FacEntry = myFacFunction.Blocks["entry"]!!
+//        val FacFalse = myFacFunction.Blocks["iffalse"]!!
+//        val FacRet = myFacFunction.Blocks["end"]!!
+
+        val info = Info(InstructionType.CONDITION)
+        info.attributes["condition"] = expressionHandler(node.children[0] as Expression)
+        info.attributes["true"] = expressionsHandler(node.children[1] as Expressions)
+
+        if (node.children.size > 2)
+            info.attributes["false"] = expressionsHandler(node.children[2] as Expressions)
+
+        return info
     }
 
     private fun whileExprHandler(node: WhileExpr) : Info {
@@ -359,9 +387,11 @@ class Api {
     }
 
     fun interpretInfos(infos : Info ) {
-        for (child in infos.attributes) {
-            getInfos(child.value)
-        }
+        println("slslslsl: " + infos.type)
+        getInfos(infos)
+//        for (child in infos.attributes) {
+//            getInfos(child.value)
+//        }
     }
 
     fun getInfos(info : Info) : String {
@@ -372,16 +402,17 @@ class Api {
         if (old != null)
             ir = old
         val main = ir.modules["main"]?.let { it } ?: ir.createModule("main")
+
+        main.addFunction(LLVMInt32Type(), "putchar", arrayOf(LLVMInt32Type()))
+
         main.setMain("main")
         for (node in tree.nodes) {
             val def = node as KDefs
 
             for (child in def.children) {
-                println("lala")
                 when (child) {
                     is TopExpr -> {
                         val infos = topExprHandler(child)
-                        main.addFunction(LLVMInt32Type(), "putchar", arrayOf(LLVMInt32Type()))
                         infos.dump()
                         println("====================")
                         interpretInfos(infos)
@@ -389,7 +420,7 @@ class Api {
                     is LocalDef -> {
                         val infos = localDefHandler(child)
                         infos.dump()
-
+                        interpretInfos(infos)
                     }
                     is ExtDef -> {
                     }

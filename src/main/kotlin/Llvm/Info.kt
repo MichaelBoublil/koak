@@ -8,6 +8,7 @@ enum class InstructionType {
     ERROR,
     CALL_FUNC,
     ASSIGNMENT,
+    CONDITION,
     DEF_FUNC,
     CALCULUS,
     VALUE,
@@ -20,7 +21,7 @@ enum class InstructionType {
     PARAM,
     PROTOARGS,
     BODY,
-    EXPRESSION
+    EXPRESSION,
 }
 
 class Info(val type : InstructionType, val value : String = "default value", val attributes : MutableMap<String, Info> = mutableMapOf<String, Info>()) {
@@ -32,6 +33,7 @@ class Info(val type : InstructionType, val value : String = "default value", val
             println(i)
             s.dump()
         }
+        println("====================================")
     }
 
     fun interpret() {

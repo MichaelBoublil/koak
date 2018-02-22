@@ -231,13 +231,17 @@ class Ir
             argNames[index] = identifier
             return _local[identifier]!!
         }
-        fun declareLocalVar(identifier: String, type: String, value: String) {
+        fun declareLocalVar(identifier: String, type: String, value: String, search: Boolean = false) {
             val knownTypes : MutableMap<String, LLVMTypeRef> = mutableMapOf()
             knownTypes["int32"] = LLVMInt32Type()
             knownTypes["int64"] = LLVMInt64Type()
             knownTypes["double"] = LLVMDoubleType()
             knownTypes["void"] = LLVMVoidType()
             localValues[identifier] = value
+            if (search) {
+                _local[identifier] = this.search(value) as LLVMValueRef
+                return
+            }
             try {
                 if (type == "int32") {
                     _local[identifier] = LLVMConstInt(LLVMInt32Type(), value.toLong(), 0)
