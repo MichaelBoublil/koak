@@ -516,7 +516,12 @@ class PegParser(private var _str : String? = null) {
 
     private fun isBinop(str: String?) : Pair<String?, INode?> {
         when (str!!.first()) {
-            '=' -> return Pair(str.drop(1), BinOp("=", true))
+            '=' -> {
+                when (str.drop(1).first()) {
+                    '=' -> {}
+                    else -> return Pair(str.drop(1), BinOp("=", true))
+                }
+            }
         }
         return when (str.matches(Regex("(\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|^=|\\|=).*"))) {
             true -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))

@@ -139,6 +139,7 @@ class Ir
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 2)
                             return false
+                        println("creating return statement of value " + args[1])
                         placeEditorAtMe()
                         _content[identifier] = LLVMBuildRet(Builder.llvm, func.search(args[1]))
                         return true

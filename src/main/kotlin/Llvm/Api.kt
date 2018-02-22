@@ -11,11 +11,12 @@ class Api {
     var incrInstr = 0
     var ir = Ir()
     var context = "main"
+    var blockContext = "entry"
 
     val map : Map<InstructionType, (Info) -> String> = mapOf(
             (InstructionType.CALL_FUNC to {
             info ->
-                val entry = ir.modules["main"]!!.functions[context]!!.Blocks["entry"]!!
+                val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
                 var params = emptyList<String>()
                 var i = 0
                 while (i < info.attributes.size - 1) {
@@ -44,11 +45,56 @@ class Api {
                     i++
                 }
                 if (context != "main") {
-                    val entry = ir.modules["main"]!!.functions[context]!!.Blocks["entry"]!!
+                    val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
 
-                    entry.append("ret", arrayOf("return", value))
+//                    entry.append("ret", arrayOf("return", value))
                 }
                 value
+            }),
+            (InstructionType.CONDITION to {
+                info ->
+//                val FacFalse = myFacFunction.Blocks["iffalse"]!!
+//                val FacRet = myFacFunction.Blocks["end"]!!
+//                FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
+//
+                val actualFunc = ir.modules["main"]!!.functions[context]!!
+                val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
+                val ifBlock = actualFunc.addBlock("if")
+                var elseBlock : Ir.Block? = null
+                if (info.attributes.size > 2)
+                    elseBlock = actualFunc.addBlock("else")
+                val end = actualFunc.addBlock("end")
+
+//
+                val cond = getInfos(info.attributes["condition"]!!)
+
+                if (elseBlock != null)
+                    entry.append("jump", arrayOf("conditional jump", cond, ifBlock.identifier, elseBlock.identifier))
+                else
+                    entry.append("jump", arrayOf("conditional jump", cond, ifBlock.identifier, end.identifier))
+
+                blockContext = "if"
+                val ifExpr = getInfos(info.attributes["if"]!!)
+                ifBlock.append("jump", arrayOf("jump", end.identifier))
+
+                if (info.attributes.size > 2) {
+                    blockContext = "else"
+
+                    val elseExpr = getInfos(info.attributes["else"]!!)
+                    elseBlock!!.append("jump", arrayOf("jump", end.identifier))
+                }
+                end.append("ret", arrayOf("return", "0"))
+//                var elseExpr : String? = null
+//
+//                println("CONDITION: " + cond)
+//                println("IF: " + ifExpr)
+//
+//                if (info.attributes.size > 2) {
+//                    elseExpr = getInfos(info.attributes["else"]!!)
+//                    println("Else: " + elseExpr)
+//                }
+
+                info.value
             }),
             (InstructionType.BODY to {
                 info ->
@@ -75,7 +121,7 @@ class Api {
                 info ->
                 var instrType = ""
                 val keys = arrayOf("ope", "lvalue", "rvalue")
-                val entry = ir.modules["main"]!!.functions[context]!!.Blocks["entry"]!!
+                val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
                 var params = emptyList<String>()
                 var i = 0
                 while (i < keys.size) {
@@ -89,6 +135,21 @@ class Api {
                     "/" -> instrType = "tmpdiv"
                 }
                 entry.append(instrType, arrayOf("binop", params[0], *params.drop(1).toTypedArray()))
+                instrType
+            }),
+            (InstructionType.COMPARE to {
+                info ->
+                val keys = arrayOf("ope", "lvalue", "rvalue")
+                val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
+                var params = emptyList<String>()
+                var i = 0
+                while (i < keys.size) {
+                    params += getInfos(info.attributes[keys[i]]!!)
+                    i++
+                }
+                val instrType = params[1] + " " + params[0] + " " + params[2]
+                println("INSTRTYPE: $instrType")
+                entry.append(instrType, arrayOf("double " + params[0], params[1], params[2]))
                 instrType
             }),
             (InstructionType.DEF_FUNC to {
@@ -121,9 +182,6 @@ class Api {
                 context = info.attributes["funName"]!!.value
                 getInfos(info.attributes["body"]!!)
                 context = "main"
-
-//
-//                val entry = ir.modules["main"]!!.functions[context]!!.Blocks["entry"]!!
 //                myFacFunction.addBlocks("entry", "iffalse", "end")
                 info.value
             })
@@ -235,8 +293,9 @@ class Api {
 
     private fun binOpHandler(node: BinOp) : Info {
         var instr = InstructionType.ERROR
-        when (node.s.first()) {
-            '=' -> instr = InstructionType.ASSIGNMENT
+        when (node.s) {
+            "=" -> instr = InstructionType.ASSIGNMENT
+            "==" -> instr = InstructionType.COMPARE
             in "+-*/" -> instr = InstructionType.CALCULUS
         }
         return if (node.isRightAssoc) {
@@ -374,10 +433,10 @@ class Api {
 
         val info = Info(InstructionType.CONDITION)
         info.attributes["condition"] = expressionHandler(node.children[0] as Expression)
-        info.attributes["true"] = expressionsHandler(node.children[1] as Expressions)
+        info.attributes["if"] = expressionsHandler(node.children[1] as Expressions)
 
         if (node.children.size > 2)
-            info.attributes["false"] = expressionsHandler(node.children[2] as Expressions)
+            info.attributes["else"] = expressionsHandler(node.children[2] as Expressions)
 
         return info
     }
@@ -387,7 +446,6 @@ class Api {
     }
 
     fun interpretInfos(infos : Info ) {
-        println("slslslsl: " + infos.type)
         getInfos(infos)
 //        for (child in infos.attributes) {
 //            getInfos(child.value)

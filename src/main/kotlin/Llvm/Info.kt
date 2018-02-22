@@ -10,7 +10,10 @@ enum class InstructionType {
     ASSIGNMENT,
     CONDITION,
     DEF_FUNC,
+
     CALCULUS,
+    COMPARE,
+
     VALUE,
     DEC_VALUE,
     DOUBLE_VALUE,
@@ -22,6 +25,7 @@ enum class InstructionType {
     PROTOARGS,
     BODY,
     EXPRESSION,
+
 }
 
 class Info(val type : InstructionType, val value : String = "default value", val attributes : MutableMap<String, Info> = mutableMapOf<String, Info>()) {
