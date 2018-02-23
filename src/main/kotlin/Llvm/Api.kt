@@ -28,6 +28,35 @@ class Api {
                 entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
                 info.attributes["func"]!!.value
             }),
+            (InstructionType.EXT_FUNC to {
+                info ->
+                val prototype = info.attributes["prototype"]!!
+                val knownTypes : MutableMap<String, LLVMTypeRef> = mutableMapOf()
+                knownTypes["int"] = LLVMInt32Type()
+                knownTypes["double"] = LLVMDoubleType()
+                knownTypes["void"] = LLVMVoidType()
+
+                var i = 0
+                var paramName = emptyList<String>()
+                var paramType = emptyList<LLVMTypeRef>()
+                while (i < prototype.attributes.size - 2) {
+                    paramType += knownTypes[prototype.attributes["param" + i]!!.attributes["type"]!!.value]!!
+                    paramName += prototype.attributes["param" + i]!!.attributes["name"]!!.value
+                    i++
+                }
+
+                val myFunc = ir.modules["main"]!!.
+                        addFunction(
+                                knownTypes[prototype.attributes["returnType"]!!.value]!!,
+                                prototype.attributes["funName"]!!.value,
+                                arrayOf(*paramType.toTypedArray())
+                        )
+                i = 0
+                for (param in paramName) {
+                    myFunc.declareParamVar(param, i++)
+                }
+                info.value
+            }),
 
             (InstructionType.DEC_VALUE to {
                 info ->
@@ -45,16 +74,15 @@ class Api {
                     value = getInfos(info.attributes[i.toString()]!!)
                     i++
                 }
-                if (context != "main") {
-                    val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
-
-                    entry.append("ret", arrayOf("return", value))
-                }
+//                if (context != "main") {
+//                    val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
+//
+//                    entry.append("ret", arrayOf("return", value))
+//                }
                 value
             }),
             (InstructionType.CONDITION to {
                 info ->
-                var retVal : String = "0"
                 val actualFunc = ir.modules["main"]!!.functions[context]!!
 
                 val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
@@ -62,7 +90,6 @@ class Api {
                 var elseBlock : Ir.Block? = null
                 if (info.attributes.size > 2)
                     elseBlock = actualFunc.addBlock("else" + incrInstr)
-
 
                 val end = actualFunc.Blocks["end"]!!
 
@@ -77,28 +104,19 @@ class Api {
 
 
                 blockContext = "if" + incrInstr
-                retVal = getInfos(info.attributes["if"]!!)
-                try {
-                    actualFunc.search("ret")
-                }
-                catch(e: Exception) {
-                    ifBlock.append("jump", arrayOf("jump", end.identifier))
-                }
+
+                getInfos(info.attributes["if"]!!)
+                ifBlock.append("jump", arrayOf("jump", end.identifier))
 
                 if (info.attributes.size > 2) {
                     blockContext = "else" + incrInstr++
 
-                    retVal = getInfos(info.attributes["else"]!!)
-
-                    try {
-                        actualFunc.search("ret")
-                    }
-                    catch(e: Exception) {
-                        elseBlock!!.append("jump", arrayOf("jump", end.identifier))
-                    }
+                    getInfos(info.attributes["else"]!!)
+                    elseBlock!!.append("jump", arrayOf("jump", end.identifier))
                 }
-                println("RETVAL: $retVal")
-                retVal
+                blockContext = "end"
+
+                "0"
             }),
             (InstructionType.BODY to {
                 info ->
@@ -152,7 +170,6 @@ class Api {
                     i++
                 }
                 val instrType = params[1] + " " + params[0] + " " + params[2]
-                println("INSTRTYPE: $instrType")
                 entry.append(instrType, arrayOf("double " + params[0], params[1], params[2]))
                 instrType
             }),
@@ -182,9 +199,14 @@ class Api {
                 for (param in paramName) {
                     myFunc.declareParamVar(param, i++)
                 }
-                val entry = myFunc.addBlock("entry")
+                myFunc.addBlocks("entry", "end")
                 context = info.attributes["funName"]!!.value
-                getInfos(info.attributes["body"]!!)
+                val value = getInfos(info.attributes["body"]!!)
+
+                val end = ir.modules["main"]!!.functions[context]!!.Blocks["end"]!!
+
+                end.append("ret", arrayOf("return", value))
+
                 context = "main"
                 info.value
             })
@@ -197,6 +219,12 @@ class Api {
     private fun localDefHandler(node: LocalDef) : Info {
         val defs = defsHandler(node.children[0] as Defs)
         return defs
+    }
+
+    private fun extDefHandler(node: ExtDef) : Info {
+        val info = Info(InstructionType.EXT_FUNC)
+        info.attributes["prototype"] = prototypeHandler(node.children[0] as Prototype)
+        return info
     }
 
     private fun defsHandler(node: Defs) : Info {
@@ -462,8 +490,6 @@ class Api {
             ir = old
         val main = ir.modules["main"]?.let { it } ?: ir.createModule("main")
 
-        main.addFunction(LLVMInt32Type(), "putchar", arrayOf(LLVMInt32Type()))
-
         main.setMain("main")
         var retVal = "0"
 
@@ -484,6 +510,8 @@ class Api {
                         interpretInfos(infos)
                     }
                     is ExtDef -> {
+                        val infos = extDefHandler(child)
+                        interpretInfos(infos)
                     }
                 }
             }

@@ -7,6 +7,7 @@ import kotlin.math.exp
 enum class InstructionType {
     ERROR,
     CALL_FUNC,
+    EXT_FUNC,
     ASSIGNMENT,
     CONDITION,
     DEF_FUNC,
