@@ -71,7 +71,6 @@ class Ir
                     }
             factory["call"] =
                     fun(identifier: String, args: Array<String>) : Boolean {
-                        println("blablabla ${args.size}")
                         if (args.size < 2)
                             return false
 
@@ -151,6 +150,7 @@ class Ir
                         placeEditorAtMe()
                         _content[identifier] = LLVMBuildRet(Builder.llvm, func.search(args[1]))
                         _labelTypes["return"] = identifier
+                        func.returnStatement = identifier
                         return true
                     }
             factory["declare function"] = fun(identifier: String, args: Array<String>) : Boolean {
@@ -173,6 +173,26 @@ class Ir
                         .map { s -> func.getLocalVar(s)?.let { it } ?: func.search(s)!! } // il faut aller chercher dans les contents de toute la fonction
                         .toTypedArray()
                 _content[identifier] = res
+                func._identifierTypes[identifier] = "int"
+                LLVMAddIncoming(res, PointerPointer(*phi_vals), PointerPointer(*phi_blocks), phi_blocks.size)
+                return true
+            }
+            factory["phi double"] = fun(identifier: String, args: Array<String>) : Boolean {
+                if (args.size < 5)
+                    return false
+
+                placeEditorAtMe()
+                val res = LLVMBuildPhi(Builder.llvm, LLVMDoubleType(), identifier)
+                val phi_blocks = args
+                        .filterIndexed({ i, s -> i % 2 == 1 && i > 0})
+                        .map { s -> func.findBlock(s)._blockLlvm }
+                        .toTypedArray()
+                val phi_vals = args
+                        .filterIndexed({ i, s -> i % 2 == 0 && i > 0})
+                        .map { s -> func.getLocalVar(s)?.let { it } ?: func.search(s)!! }
+                        .toTypedArray()
+                _content[identifier] = res
+                func._identifierTypes[identifier] = "double"
                 LLVMAddIncoming(res, PointerPointer(*phi_vals), PointerPointer(*phi_blocks), phi_blocks.size)
                 return true
             }
@@ -193,7 +213,7 @@ class Ir
                                val type: LLVMTypeRef, val identifier: String, val argTypes: Array<LLVMTypeRef>)
     {
         val _funLlvm : LLVMValueRef
-
+        var returnStatement : String? = null
         init {
             if (argTypes.isEmpty()) {
                 _funLlvm = LLVMAddFunction(module._modLlvm, identifier, LLVMFunctionType(type, LLVMTypeRef(), 0, 0))
@@ -214,9 +234,12 @@ class Ir
                 addBlock(arg)
             }
         }
+        val _identifierTypes : MutableMap<String, String> = mutableMapOf()
+
         fun createConstInt(value: String) : LLVMValueRef {
             val ref = LLVMConstInt(LLVMInt32Type(), value.toLong(), 0)
             _local[value] = ref
+            _identifierTypes[value] = "int"
             return ref
         }
 
@@ -231,6 +254,18 @@ class Ir
             Blocks[i.identifier] = i
             return i
         }
+        val fromTypeToString : MutableMap<LLVMTypeRef, String> = mutableMapOf()
+        init {
+            fromTypeToString[LLVMInt8Type()] = "int"
+            fromTypeToString[LLVMInt32Type()] = "int"
+            fromTypeToString[LLVMInt64Type()] = "int"
+            fromTypeToString[LLVMDoubleType()] = "double"
+            fromTypeToString[LLVMVoidType()] = "void"
+        }
+
+        fun getParamType(index: Int) : String {
+            return fromTypeToString[argTypes[index]]!!
+        }
 
         var _local : MutableMap<String, LLVMValueRef> = mutableMapOf()
         var localValues : MutableMap<String, String> = mutableMapOf()
@@ -238,25 +273,36 @@ class Ir
         fun declareParamVar(identifier: String, index: Int) : LLVMValueRef {
             _local[identifier] = LLVMGetParam(_funLlvm, index)
             argNames[index] = identifier
+            _identifierTypes[identifier] = getParamType(index)
             return _local[identifier]!!
         }
         fun declareLocalVar(identifier: String, type: String, value: String, search: Boolean = false) {
             val knownTypes : MutableMap<String, LLVMTypeRef> = mutableMapOf()
+            knownTypes["int8"] = LLVMInt8Type()
             knownTypes["int32"] = LLVMInt32Type()
             knownTypes["int64"] = LLVMInt64Type()
             knownTypes["double"] = LLVMDoubleType()
             knownTypes["void"] = LLVMVoidType()
+            var signed : Int
+            if (value.matches(Regex("^-[0-9]+$")))
+                signed = 0
+            else
+                signed = 1
+            _identifierTypes[identifier] = fromTypeToString[knownTypes[type] as LLVMTypeRef]!!
             localValues[identifier] = value
             if (search) {
                 _local[identifier] = this.search(value) as LLVMValueRef
                 return
             }
             try {
+                if (type == "int8") {
+                    _local[identifier] = LLVMConstInt(LLVMInt8Type(), value.toLong(), signed)
+                }
                 if (type == "int32") {
-                    _local[identifier] = LLVMConstInt(LLVMInt32Type(), value.toLong(), 0)
+                    _local[identifier] = LLVMConstInt(LLVMInt32Type(), value.toLong(), signed)
                 }
                 if (type == "int64") {
-                    _local[identifier] = LLVMConstInt(LLVMInt64Type(), value.toLong(), 0)
+                    _local[identifier] = LLVMConstInt(LLVMInt64Type(), value.toLong(), signed)
                 }
                 if (type == "double") {
                     _local[identifier] = LLVMConstReal(LLVMDoubleType(), value.toDouble())
@@ -265,6 +311,9 @@ class Ir
                 System.err.println("Cannot declare variable of type Expr")
                 throw e
             }
+        }
+        fun getIdentifierType(identifier: String) : String {
+            return _identifierTypes[identifier]!!
         }
         fun getLocalVar(identifier: String) : LLVMValueRef?
         {
