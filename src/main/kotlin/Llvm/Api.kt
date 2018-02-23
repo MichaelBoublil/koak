@@ -21,6 +21,7 @@ class Api {
                     params += getInfos(info.attributes[i.toString()]!!)
                     i++
                 }
+                println("PARAMS: " + params.toString())
 
                 entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
                 info.attributes["func"]!!.value
@@ -205,9 +206,12 @@ class Api {
                                 knownTypes[info.attributes["returnType"]!!.value]!!,
                                 info.attributes["funName"]!!.value,
                                 arrayOf(*paramType.toTypedArray())
-                                )
+                        )
                 i = 0
+//                if (myFunc.)
                 for (param in paramName) {
+                    println("PARAM: " + param)
+                    println("IDX: " + i)
                     myFunc.declareParamVar(param, i++)
                 }
                 myFunc.addBlocks("entry", "end")

@@ -218,8 +218,9 @@ class Ir
             if (argTypes.isEmpty()) {
                 _funLlvm = LLVMAddFunction(module._modLlvm, identifier, LLVMFunctionType(type, LLVMTypeRef(), 0, 0))
             } else {
+                val paramType = PointerPointer(*argTypes)
                 _funLlvm = LLVMAddFunction(module._modLlvm, identifier,
-                        LLVMFunctionType(type, argTypes[0], argTypes.size, 0))
+                        LLVMFunctionType(type, paramType, argTypes.size, 0))
             }
         }
 
