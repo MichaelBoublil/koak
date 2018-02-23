@@ -14,5 +14,5 @@ extern putchar(c:int):int;
 
 def add(x:int y:int) : int x + y;
 
-putchar(add(95, 3));
+putchar(add(add(95, 3), 1));
 

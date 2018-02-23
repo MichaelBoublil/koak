@@ -21,7 +21,7 @@ class Api {
                     params += getInfos(info.attributes[i.toString()]!!)
                     i++
                 }
-                println("PARAMS: " + params.toString())
+
 
                 entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
                 info.attributes["func"]!!.value
@@ -210,8 +210,6 @@ class Api {
                 i = 0
 //                if (myFunc.)
                 for (param in paramName) {
-                    println("PARAM: " + param)
-                    println("IDX: " + i)
                     myFunc.declareParamVar(param, i++)
                 }
                 myFunc.addBlocks("entry", "end")
@@ -324,7 +322,6 @@ class Api {
         val expr = Info(InstructionType.EXPRESSION)
         var i = 0
         for (child in node.children) {
-
             when (child) {
                 is Unary -> {
                     expr.attributes[i.toString()] = unaryHandler(child)
@@ -332,7 +329,6 @@ class Api {
                 is BinOp -> {
                     expr.attributes[i.toString()] = binOpHandler(child)
                 }
-                else -> i -= 1
             }
             i += 1
         }
@@ -405,13 +401,15 @@ class Api {
     }
 
     private fun callExprHandler(node: CallExpr) : Info {
-        var i = 0
         val params = Info(InstructionType.PARAM)
+        var i = 0
         for (child in node.children) {
             when (child) {
                 is Expression -> {
-                    params.attributes += expressionHandler(child).attributes
-                    i+=1
+                    // Avant y'avait juste += expressionHandler(child).attributes
+                    // TODO  a tester avec le reste
+                    params.attributes[i.toString()] = expressionHandler(child).attributes["0"]!!
+                    i++
                 }
             }
         }
@@ -524,13 +522,13 @@ class Api {
                 when (child) {
                     is TopExpr -> {
                         val infos = topExprHandler(child)
-                        infos.dump()
-                        println("====================")
+//                        infos.dump()
+//                        println("====================")
                         retVal = interpretInfos(infos)
                     }
                     is LocalDef -> {
                         val infos = localDefHandler(child)
-                        infos.dump()
+//                        infos.dump()
                         interpretInfos(infos)
                     }
                     is ExtDef -> {
