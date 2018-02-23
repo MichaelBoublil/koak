@@ -312,6 +312,9 @@ class Ir
                 throw e
             }
         }
+        fun getIdentifierType(identifier: String) : String {
+            return _identifierTypes[identifier]!!
+        }
         fun getLocalVar(identifier: String) : LLVMValueRef?
         {
             return _local[identifier]
