@@ -1,1 +1,8 @@
-putchar(97);
+d = 5;
+e = 6;
+if d == e then
+  putchar(97)
+else if d == 6 then
+  putchar(98)
+else
+  putchar(99);

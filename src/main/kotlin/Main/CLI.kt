@@ -23,6 +23,7 @@ class CLI {
             if (isCompileCommand) {
                 val outputFile = inputString.replace("compile ", "")
                 println("You wish to compile to " + outputFile)
+                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
                 ir.verify()
                 ir.compile(outputFile)
             } else {

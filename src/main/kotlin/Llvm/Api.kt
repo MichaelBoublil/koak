@@ -9,6 +9,7 @@ import javax.sound.sampled.Line
 
 class Api {
     var incrInstr = 0
+    var isInCondBlock : Boolean = false;
     var ir = Ir()
     var context = "main"
     var blockContext = "entry"
@@ -47,52 +48,61 @@ class Api {
                 if (context != "main") {
                     val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
 
-//                    entry.append("ret", arrayOf("return", value))
+                    entry.append("ret", arrayOf("return", value))
                 }
                 value
             }),
             (InstructionType.CONDITION to {
                 info ->
-//                val FacFalse = myFacFunction.Blocks["iffalse"]!!
-//                val FacRet = myFacFunction.Blocks["end"]!!
-//                FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
-//
+                val condBlock = isInCondBlock
+                isInCondBlock = true
                 val actualFunc = ir.modules["main"]!!.functions[context]!!
                 val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
-                val ifBlock = actualFunc.addBlock("if")
+                val ifBlock = actualFunc.addBlock("if" + incrInstr)
                 var elseBlock : Ir.Block? = null
                 if (info.attributes.size > 2)
-                    elseBlock = actualFunc.addBlock("else")
-                val end = actualFunc.addBlock("end")
+                    elseBlock = actualFunc.addBlock("else" + incrInstr)
 
-//
+                val end = try {
+                    actualFunc.Blocks["end"]!!
+                } catch (e : Exception) {
+                    actualFunc.addBlock("end")
+                }
+
                 val cond = getInfos(info.attributes["condition"]!!)
 
-                if (elseBlock != null)
+                if (elseBlock != null) {
                     entry.append("jump", arrayOf("conditional jump", cond, ifBlock.identifier, elseBlock.identifier))
-                else
+                }
+                else {
                     entry.append("jump", arrayOf("conditional jump", cond, ifBlock.identifier, end.identifier))
+                }
 
-                blockContext = "if"
+                blockContext = "if" + incrInstr
                 val ifExpr = getInfos(info.attributes["if"]!!)
-                ifBlock.append("jump", arrayOf("jump", end.identifier))
+                try {
+                    actualFunc.search("ret")
+                }
+                catch(e: Exception) {
+                    ifBlock.append("jump", arrayOf("jump", end.identifier))
+                }
 
                 if (info.attributes.size > 2) {
-                    blockContext = "else"
+                    blockContext = "else" + incrInstr++
 
                     val elseExpr = getInfos(info.attributes["else"]!!)
-                    elseBlock!!.append("jump", arrayOf("jump", end.identifier))
+
+                    try {
+                        actualFunc.search("ret")
+                    }
+                    catch(e: Exception) {
+                        elseBlock!!.append("jump", arrayOf("jump", end.identifier))
+                    }
                 }
-                end.append("ret", arrayOf("return", "0"))
-//                var elseExpr : String? = null
-//
-//                println("CONDITION: " + cond)
-//                println("IF: " + ifExpr)
-//
-//                if (info.attributes.size > 2) {
-//                    elseExpr = getInfos(info.attributes["else"]!!)
-//                    println("Else: " + elseExpr)
-//                }
+                if (condBlock)
+                    end.append("ret", arrayOf("return", "0"))
+
+                isInCondBlock = false
 
                 info.value
             }),
@@ -182,7 +192,6 @@ class Api {
                 context = info.attributes["funName"]!!.value
                 getInfos(info.attributes["body"]!!)
                 context = "main"
-//                myFacFunction.addBlocks("entry", "iffalse", "end")
                 info.value
             })
     )
@@ -296,6 +305,7 @@ class Api {
         when (node.s) {
             "=" -> instr = InstructionType.ASSIGNMENT
             "==" -> instr = InstructionType.COMPARE
+            in "<>" -> instr = InstructionType.COMPARE
             in "+-*/" -> instr = InstructionType.CALCULUS
         }
         return if (node.isRightAssoc) {

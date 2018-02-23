@@ -29,7 +29,7 @@ class Compiler(file : String) {
                 println(ast.dump())
                 val llvm = Api()
                 ir = llvm.toIR(ast, ir)
-                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
+//                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
                 ir.print()
                 ir.verify()
                 ir.compile("a.out")
@@ -37,7 +37,7 @@ class Compiler(file : String) {
         }
         catch(e : Exception) {
             System.err.println("Compilation Error.")
-//                e.printStackTrace()
+            e.printStackTrace()
         }
     }
 }

@@ -276,10 +276,11 @@ class Ir
                 System.err.println("Search ${identifier} cannot be converted to numeric type")
             }
             for (block in Blocks) {
-                for (inst in block.value._content)
+                for (inst in block.value._content) {
                     if (inst.key == identifier) {
                         return inst.value
                     }
+                }
             }
             if (searchInLocal) {
                 for (v in _local)
@@ -287,6 +288,7 @@ class Ir
                         return v.value
             }
             throw Exception("Unresolved identifier ${identifier}")
+//            return null
         }
 
         fun print() {
