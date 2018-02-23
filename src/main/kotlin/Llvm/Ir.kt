@@ -20,6 +20,7 @@ class Ir
     // An instruction is an LLVM Block
     class Block constructor (val func: Function, val identifier : String)
     {
+        val _labelTypes : MutableMap<String, String> = mutableMapOf()
         val _blockLlvm : LLVMBasicBlockRef = LLVMAppendBasicBlock(func._funLlvm, identifier)
         val _content : MutableMap<String, LLVMValueRef> = mutableMapOf()
 
@@ -93,18 +94,24 @@ class Ir
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 2)
                             return false
+                        if (_labelTypes["jump"] != null)
+                            return false
                         placeEditorAtMe()
                         _content[identifier] = LLVMBuildBr(Builder.llvm, func.findBlock(args[1])._blockLlvm)
+                        _labelTypes["jump"] = identifier
                         return true
                     }
             factory["conditional jump"] =
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 4)
                             return false
+                        if (_labelTypes["conditional jump"] != null)
+                            return false
                         val conditionalValue = _content[args[1]]
 
                         placeEditorAtMe()
                         _content[identifier] = LLVMBuildCondBr(Builder.llvm, conditionalValue, func.findBlock(args[2])._blockLlvm, func.findBlock(args[3])._blockLlvm)
+                        _labelTypes["conditional jump"] = identifier
                         return true
                     }
             factory["binop"] =
@@ -139,9 +146,11 @@ class Ir
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 2)
                             return false
-                        println("creating return statement of value " + args[1])
+                        if (_labelTypes["return"] != null)
+                            return false
                         placeEditorAtMe()
                         _content[identifier] = LLVMBuildRet(Builder.llvm, func.search(args[1]))
+                        _labelTypes["return"] = identifier
                         return true
                     }
             factory["declare function"] = fun(identifier: String, args: Array<String>) : Boolean {
@@ -183,7 +192,6 @@ class Ir
     class Function constructor(val module: Module,
                                val type: LLVMTypeRef, val identifier: String, val argTypes: Array<LLVMTypeRef>)
     {
-
         val _funLlvm : LLVMValueRef
 
         init {
