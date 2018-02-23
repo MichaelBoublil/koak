@@ -11,7 +11,7 @@ class CLI {
 
     init {
         val main = ir.createModule("main").addFunction(LLVMInt32Type(), "main", arrayOf())
-        main.addBlock("entry")
+        main.addBlocks("entry", "end")
     }
 
     fun run() {
@@ -23,7 +23,11 @@ class CLI {
             if (isCompileCommand) {
                 val outputFile = inputString.replace("compile ", "")
                 println("You wish to compile to " + outputFile)
-                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
+                if (ir.modules["main"]!!.functions["main"]!!.Blocks.size == 2)
+                    ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("jump", arrayOf("jump", "end"))
+
+                ir.modules["main"]!!.functions["main"]!!.Blocks["end"]!!.append("return", arrayOf("return", "0"))
+//                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
                 ir.verify()
                 ir.compile(outputFile)
             } else {
@@ -34,7 +38,7 @@ class CLI {
                         println("Syntax Error")
                     else {
                         println(ast.dump())
-                        ir = llvm.toIR(ast, ir)
+                        ir = llvm.toIR(ast, ir, "CLI")
                         ir.print()
                     }
                 } catch (e: Exception) {

@@ -1,3 +1,5 @@
+def func(x:int):int putchar(100);
+
 d = 5;
 e = 6;
 if d == e then

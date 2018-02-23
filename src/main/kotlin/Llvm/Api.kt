@@ -54,20 +54,17 @@ class Api {
             }),
             (InstructionType.CONDITION to {
                 info ->
-                val condBlock = isInCondBlock
-                isInCondBlock = true
+                var retVal : String = "0"
                 val actualFunc = ir.modules["main"]!!.functions[context]!!
+
                 val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
                 val ifBlock = actualFunc.addBlock("if" + incrInstr)
                 var elseBlock : Ir.Block? = null
                 if (info.attributes.size > 2)
                     elseBlock = actualFunc.addBlock("else" + incrInstr)
 
-                val end = try {
-                    actualFunc.Blocks["end"]!!
-                } catch (e : Exception) {
-                    actualFunc.addBlock("end")
-                }
+
+                val end = actualFunc.Blocks["end"]!!
 
                 val cond = getInfos(info.attributes["condition"]!!)
 
@@ -78,8 +75,9 @@ class Api {
                     entry.append("jump", arrayOf("conditional jump", cond, ifBlock.identifier, end.identifier))
                 }
 
+
                 blockContext = "if" + incrInstr
-                val ifExpr = getInfos(info.attributes["if"]!!)
+                retVal = getInfos(info.attributes["if"]!!)
                 try {
                     actualFunc.search("ret")
                 }
@@ -90,7 +88,7 @@ class Api {
                 if (info.attributes.size > 2) {
                     blockContext = "else" + incrInstr++
 
-                    val elseExpr = getInfos(info.attributes["else"]!!)
+                    retVal = getInfos(info.attributes["else"]!!)
 
                     try {
                         actualFunc.search("ret")
@@ -99,22 +97,18 @@ class Api {
                         elseBlock!!.append("jump", arrayOf("jump", end.identifier))
                     }
                 }
-                if (condBlock)
-                    end.append("ret", arrayOf("return", "0"))
-
-                isInCondBlock = false
-
-                info.value
+                println("RETVAL: $retVal")
+                retVal
             }),
             (InstructionType.BODY to {
                 info ->
+                var retVal = "0"
                 var i = 0
                 while (i < info.attributes.size) {
-                    getInfos(info.attributes[i.toString()]!!)
+                    retVal = getInfos(info.attributes[i.toString()]!!)
                     i++
                 }
-                info.value
-
+                retVal
             }),
             (InstructionType.ASSIGNMENT to {
                 info ->
@@ -455,18 +449,15 @@ class Api {
         return Info(InstructionType.ERROR)
     }
 
-    fun interpretInfos(infos : Info ) {
-        getInfos(infos)
-//        for (child in infos.attributes) {
-//            getInfos(child.value)
-//        }
+    private fun interpretInfos(infos : Info ) : String {
+        return getInfos(infos)
     }
 
-    fun getInfos(info : Info) : String {
+    private fun getInfos(info : Info) : String {
         return map[info.type]?.invoke(info)!!
     }
 
-    fun toIR(tree: AST, old : Ir? = null) : Ir {
+    fun toIR(tree: AST, old : Ir? = null, mode : String) : Ir {
         if (old != null)
             ir = old
         val main = ir.modules["main"]?.let { it } ?: ir.createModule("main")
@@ -474,6 +465,8 @@ class Api {
         main.addFunction(LLVMInt32Type(), "putchar", arrayOf(LLVMInt32Type()))
 
         main.setMain("main")
+        var retVal = "0"
+
         for (node in tree.nodes) {
             val def = node as KDefs
 
@@ -483,7 +476,7 @@ class Api {
                         val infos = topExprHandler(child)
                         infos.dump()
                         println("====================")
-                        interpretInfos(infos)
+                        retVal = interpretInfos(infos)
                     }
                     is LocalDef -> {
                         val infos = localDefHandler(child)
@@ -495,11 +488,17 @@ class Api {
                 }
             }
         }
+        if (mode == "Compiler") {
+            if (ir.modules["main"]!!.functions["main"]!!.Blocks.size == 2)
+                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("jump", arrayOf("jump", "end"))
+
+            ir.modules["main"]!!.functions["main"]!!.Blocks["end"]!!.append("return", arrayOf("return", retVal))
+        }
         return ir
     }
 
     fun jit(tree: AST): MutableList<Jit> {
-        val ir = toIR(tree)
+        val ir = toIR(tree, null, "CLI")
         val jit = ir.jit()
         return jit
     }

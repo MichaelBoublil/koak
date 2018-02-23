@@ -17,7 +17,7 @@ class Compiler(file : String) {
         val finalInput = inputString.replace(Regex("#.*"), "")
         parser.setString(finalInput.replace(Regex("\n"), ""))
         val main = ir.createModule("main").addFunction(LLVMInt32Type(), "main", arrayOf())
-        main.addBlock("entry")
+        main.addBlocks("entry", "end")
     }
 
     fun compile() {
@@ -28,7 +28,7 @@ class Compiler(file : String) {
             else {
                 println(ast.dump())
                 val llvm = Api()
-                ir = llvm.toIR(ast, ir)
+                ir = llvm.toIR(ast, ir, "Compiler")
 //                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
                 ir.print()
                 ir.verify()
