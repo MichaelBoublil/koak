@@ -1,13 +1,13 @@
 extern putchar(c:int):int;
 
-def func(x:int):int
- if x == 5 then
+def func(x:double):int
+ if x == 5.5 then
    putchar(97)
- else if x == 6 then
+ else if x == 6.6 then
    putchar(98)
  else
    putchar(99);
 
-func(5);
-func(6);
-func(7);
+func(5.5);
+func(6.6);
+func(7.7);

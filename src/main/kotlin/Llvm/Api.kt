@@ -59,6 +59,10 @@ class Api {
                 info ->
                 info.value
             }),
+            (InstructionType.DOUBLE_VALUE to {
+                info ->
+                info.value
+            }),
             (InstructionType.VALUE to {
                 info ->
                 info.value
@@ -160,6 +164,7 @@ class Api {
                 info ->
                 val keys = arrayOf("ope", "lvalue", "rvalue")
                 val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
+                val actualFunc = ir.modules["main"]!!.functions[context]!!
                 var params = emptyList<String>()
                 var i = 0
                 while (i < keys.size) {
@@ -167,7 +172,16 @@ class Api {
                     i++
                 }
                 val instrType = params[1] + " " + params[0] + " " + params[2]
-                entry.append(instrType, arrayOf("double " + params[0], params[1], params[2]))
+                var paramType : String = ""
+
+                paramType = if (params[1].first().isLetter()) {
+                    actualFunc.getIdentifierType(params[1])
+                } else if (params[1].contains(Regex("^.*[\\.].*$"))) {
+                    "double"
+                } else
+                    "int"
+
+                entry.append(instrType, arrayOf(paramType + " " + params[0], params[1], params[2]))
                 instrType
             }),
             (InstructionType.DEF_FUNC to {
@@ -445,7 +459,14 @@ class Api {
 
     private fun octalConstHandler(node: OctalConst) : Info {return Info(InstructionType.OCT_VALUE)}
 
-    private fun doubleConstHandler(node: DoubleConst) : Info {return Info(InstructionType.DOUBLE_VALUE)}
+    private fun doubleConstHandler(node: DoubleConst) : Info {
+        //TODO: EXP
+        val info = Info(InstructionType.DOUBLE_VALUE)
+
+        info.value = decimalConstHandler(node.children[0] as DecimalConst).value + "." + decimalConstHandler(node.children[2] as DecimalConst).value
+
+        return info
+    }
 
     private fun identifierHandler(node: Identifier) : Info {
         return Info(InstructionType.VALUE, node.s)

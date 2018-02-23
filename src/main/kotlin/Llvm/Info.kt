@@ -29,7 +29,7 @@ enum class InstructionType {
 
 }
 
-class Info(val type : InstructionType, val value : String = "default value", val attributes : MutableMap<String, Info> = mutableMapOf<String, Info>()) {
+class Info(val type : InstructionType, var value : String = "default value", val attributes : MutableMap<String, Info> = mutableMapOf<String, Info>()) {
     fun dump() {
         println("Type : " + type.toString())
         println("Value : " + value)
