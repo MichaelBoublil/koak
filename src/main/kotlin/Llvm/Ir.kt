@@ -94,7 +94,7 @@ class Ir
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 2)
                             return false
-                        if (_labelTypes["jump"] != null)
+                        if (_labelTypes["return"] != null || _labelTypes["jump"] != null || _labelTypes["conditional jump"] != null)
                             return false
                         placeEditorAtMe()
                         _content[identifier] = LLVMBuildBr(Builder.llvm, func.findBlock(args[1])._blockLlvm)
@@ -105,7 +105,7 @@ class Ir
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 4)
                             return false
-                        if (_labelTypes["conditional jump"] != null)
+                        if (_labelTypes["return"] != null || _labelTypes["jump"] != null || _labelTypes["conditional jump"] != null)
                             return false
                         val conditionalValue = _content[args[1]]
 
@@ -146,7 +146,7 @@ class Ir
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 2)
                             return false
-                        if (_labelTypes["return"] != null)
+                        if (_labelTypes["return"] != null || _labelTypes["jump"] != null || _labelTypes["conditional jump"] != null)
                             return false
                         placeEditorAtMe()
                         _content[identifier] = LLVMBuildRet(Builder.llvm, func.search(args[1]))
