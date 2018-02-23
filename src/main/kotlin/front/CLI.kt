@@ -1,4 +1,4 @@
-package Main
+package front
 
 import Llvm.Api
 import Llvm.Ir

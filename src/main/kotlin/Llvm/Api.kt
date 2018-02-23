@@ -1,11 +1,8 @@
 package Llvm
 
 import Parser.*
-import jdk.nashorn.internal.ir.IfNode
-import org.bytedeco.javacpp.*
 import org.bytedeco.javacpp.LLVM.*
 import java.lang.Thread.sleep
-import javax.sound.sampled.Line
 
 class Api {
     var incrInstr = 0
@@ -203,8 +200,10 @@ class Api {
                 context = info.attributes["funName"]!!.value
                 val value = getInfos(info.attributes["body"]!!)
 
+                val entry = ir.modules["main"]!!.functions[context]!!.Blocks["entry"]!!
                 val end = ir.modules["main"]!!.functions[context]!!.Blocks["end"]!!
 
+                entry.append("jump", arrayOf("jump", end.identifier))
                 end.append("ret", arrayOf("return", value))
 
                 context = "main"

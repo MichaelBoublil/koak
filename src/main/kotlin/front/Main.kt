@@ -1,6 +1,4 @@
-package Main
-
-import Llvm.Api
+package front
 
 fun main(args: Array<String>) {
 //    val llvm = Api()

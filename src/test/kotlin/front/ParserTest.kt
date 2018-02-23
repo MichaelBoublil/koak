@@ -1,4 +1,4 @@
-package Main
+package front
 
 import Parser.*
 import org.jetbrains.spek.api.Spek

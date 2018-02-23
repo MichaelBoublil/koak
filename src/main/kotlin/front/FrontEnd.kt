@@ -1,4 +1,4 @@
-package Main
+package front
 
 class FrontEnd(args : Array<String>) {
     private var cli = CLI()
@@ -12,7 +12,7 @@ class FrontEnd(args : Array<String>) {
             val idx = args[0].indexOf(".koak")
             if (idx == -1 || idx + ".koak".length != args[0].length)
                 throw Exception(Messages.wrongFileExtension)
-            compiler = Main.Compiler(args[0])
+            compiler = front.Compiler(args[0])
             compiler!!.compile()
         }
     }

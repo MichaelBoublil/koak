@@ -50,7 +50,7 @@ dependencies {
 
 jar {
     manifest {
-        attributes 'Main-Class' : 'Main.MainKt'
+        attributes 'Main-Class' : 'front.MainKt'
     }
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
 }
