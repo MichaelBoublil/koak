@@ -568,8 +568,9 @@ class Api {
         // That a module, it can contain more than one function
         val myMod = ir.createModule("fac_module")
 
-        val myFacFunction = myMod.addFunction(LLVMInt32Type(), "myFactorial", arrayOf(LLVMInt32Type()))
+        val myFacFunction = myMod.addFunction(LLVMInt32Type(), "myFactorial", arrayOf(LLVMInt32Type(), LLVMInt32Type()))
         myFacFunction.declareParamVar("n", 0)
+        myFacFunction.declareParamVar("m", 1)
 
         // On pourrait faciliter la creation de plusieurs label d'un coup
         // myFacFunction.bulkAddBlocks("entry", "iffalse", "end") (donc 4 lignes au lieu de 3... super !)
@@ -581,12 +582,12 @@ class Api {
 //        val FacFalse = myFacFunction.addBlock("iffalse")
 //        val FacRet = myFacFunction.addBlock("end")
 
-        FacEntry.append("n == 1", arrayOf("int ==", "n", "1"))
+        FacEntry.append("n == 1", arrayOf("int ==", "n", "m"))
         FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
 
         myFacFunction.createConstInt("-1")
         FacFalse.append("n - 1", arrayOf("binop", "+", "n", "-1"))
-        FacFalse.append("fac(n - 1)", arrayOf("call", myFacFunction.identifier, "n - 1"))
+        FacFalse.append("fac(n - 1)", arrayOf("call", myFacFunction.identifier, "n - 1", "1"))
         FacFalse.append("n * fac(n - 1)", arrayOf("binop", "*", "n", "fac(n - 1)"))
         FacFalse.append("jump", arrayOf("jump", FacRet.identifier))
 
@@ -602,7 +603,7 @@ class Api {
         // Important to set an entry point in the module for JIT
         val main = myMod.addFunction(LLVMInt32Type(), "main", arrayOf())
         val entrypoint = main.addBlock("entrypoint")
-        entrypoint.append("call putchar", arrayOf("call", "putchar", "97"))
+        // entrypoint.append("call putchar", arrayOf("call", "putchar", "97"))
         entrypoint.append("ret", arrayOf("return", "0"))
         myMod.setMain("main")
 
@@ -610,7 +611,7 @@ class Api {
         ir.verify()
         sleep(1000)
         val arr = ir.jit("fac_module")
-        val res = arr[0].runFunction("myFactorial", arrayOf(5))
+        val res = arr[0].runFunction("myFactorial", arrayOf(5, 1))
         println(res.content)
         ir.compile("compiledIR")
     }

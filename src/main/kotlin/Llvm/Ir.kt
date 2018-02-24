@@ -397,6 +397,7 @@ class Ir
         fun jit(dest: String = "a.out"): Jit
         {
             val jit = Jit(this, dest)
+
             return jit
         }
 
@@ -461,7 +462,7 @@ class Ir
     {
         val list : MutableList<Jit> = mutableListOf()
         for (mod in modules) {
-            if (module != "") {
+            if (module == "") {
                 val res = mod.value.jit()
                 println("JIT Of ${mod.value.identifier} is :\n$res")
                 list.add(res)
@@ -480,7 +481,7 @@ class Ir
     {
         for (mod in modules) {
             println("Compiling module ${mod.key}")
-            mod.value.jit(dest)
+            mod.value.jit(dest).compileToFile()
         }
     }
 

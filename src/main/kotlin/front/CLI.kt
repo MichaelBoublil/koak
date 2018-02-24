@@ -20,6 +20,9 @@ class CLI {
             val inputString = readLine() ?: break
 
             val isCompileCommand = inputString.matches(Regex("^compile \\w+$"))
+            val isDumpCommand = inputString.matches(Regex("^dump$"))
+            val isPrettyDumpCommand = inputString.matches(Regex("^prettyprint$"))
+            val isRunCommand = inputString.matches(Regex("^run$"))
             if (isCompileCommand) {
                 val outputFile = inputString.replace("compile ", "")
                 println("You wish to compile to " + outputFile)
@@ -30,6 +33,20 @@ class CLI {
 //                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
                 ir.verify()
                 ir.compile(outputFile)
+            } else if (isDumpCommand) {
+                ir.print()
+            } else if (isPrettyDumpCommand) {
+                ir.pretty()
+            } else if (isRunCommand) {
+                println("Jit modules in progress...")
+                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("fj", arrayOf("jump", "end"))
+                ir.modules["main"]!!.functions["main"]!!.Blocks["end"]!!.append("ret", arrayOf("return", "0"))
+                ir.verify()
+                for (mod in ir.jit()) {
+                    val exec = mod.runFunction("main", arrayOf())
+                    println("Ran ${exec.source}:")
+                    println(exec.content)
+                }
             } else {
                 parser.setString(inputString)
                 try {
@@ -39,7 +56,7 @@ class CLI {
                     else {
                         println(ast.dump())
                         ir = llvm.toIR(ast, ir, "CLI")
-                        ir.print()
+                        // ir.print()
                     }
                 } catch (e: Exception) {
                     System.err.println("Compilation Error.")

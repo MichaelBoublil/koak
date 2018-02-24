@@ -1,9 +1,11 @@
 package front
 
+import Llvm.Api
+
 fun main(args: Array<String>) {
-//    val llvm = Api()
-//    llvm.grok(args)
-//    return
+    val llvm = Api()
+    llvm.grok(args)
+    return
     try {
         FrontEnd(args)
     }
