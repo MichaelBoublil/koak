@@ -1,5 +1,8 @@
 extern putchar(c:int):int;
 
-i = 97;
-while i == 97 do
-  putchar(i) : i = i + 1;
+def add(x:int):int
+  x + 2;
+
+add(5);
+
+

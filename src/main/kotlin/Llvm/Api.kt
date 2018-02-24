@@ -22,6 +22,8 @@ class Api {
                     params += getInfos(info.attributes[i.toString()]!!)
                     i++
                 }
+
+                ir.verify()
                 val exec = ir.jit("main")[0].runFunction(info.attributes["func"]!!.value, arrayOf(5))
                 println(exec.content)
                 entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
@@ -211,10 +213,8 @@ class Api {
                 } else
                     "int"
 
-//                entry.append(instrType, arrayOf(paramType + " " + params[0], params[1], params[2]))
-//                instrType
-                entry.append("resCond==97", arrayOf("int " + params[0], "resCond", "97"))
-                "resCond==97"
+                entry.append(instrType, arrayOf(paramType + " " + params[0], params[1], params[2]))
+                instrType
             }),
             (InstructionType.DEF_FUNC to {
                 info ->

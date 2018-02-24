@@ -29,7 +29,6 @@ class Compiler(file : String) {
                 println(ast.dump())
                 val llvm = Api()
                 ir = llvm.toIR(ast, ir, "Compiler")
-//                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
                 ir.print()
                 ir.verify()
                 ir.compile("a.out")
