@@ -3,6 +3,6 @@ extern putchar(c:int):int;
 def add(x:int):int
   x + 2;
 
-add(5);
+putchar(add(95));
 
 

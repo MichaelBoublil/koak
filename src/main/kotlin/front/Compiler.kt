@@ -31,7 +31,7 @@ class Compiler(file : String) {
                 ir = llvm.toIR(ast, ir, "Compiler")
                 ir.print()
                 ir.verify()
-                ir.compile("a.out")
+                ir.jit("main")[0].compileToFile()
             }
         }
         catch(e : Exception) {

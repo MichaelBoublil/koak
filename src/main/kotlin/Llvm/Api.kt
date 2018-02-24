@@ -11,6 +11,7 @@ class Api {
     var ir = Ir()
     var context = "main"
     var blockContext = "entry"
+    var runMode : String? = null
 
     val map : Map<InstructionType, (Info) -> String> = mapOf(
             (InstructionType.CALL_FUNC to {
@@ -23,10 +24,15 @@ class Api {
                     i++
                 }
 
-                ir.verify()
-                val exec = ir.jit("main")[0].runFunction(info.attributes["func"]!!.value, arrayOf(5))
-                println(exec.content)
-                entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
+                if (runMode == "CLI") {
+                    ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("fj", arrayOf("jump", "end"))
+                    ir.modules["main"]!!.functions["main"]!!.Blocks["end"]!!.append("ret", arrayOf("return", "0"))
+                    val exec = ir.jit("main")[0].runFunction(info.attributes["func"]!!.value, arrayOf(*params.toTypedArray()))
+                    println(exec.content)
+                }
+                else {
+                    entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
+                }
                 info.attributes["func"]!!.value
             }),
             (InstructionType.EXT_FUNC to {
@@ -539,6 +545,7 @@ class Api {
     }
 
     fun toIR(tree: AST, old : Ir? = null, mode : String) : Ir {
+        runMode = mode
         if (old != null)
             ir = old
         val main = ir.modules["main"]?.let { it } ?: ir.createModule("main")
