@@ -22,7 +22,8 @@ class Api {
                     params += getInfos(info.attributes[i.toString()]!!)
                     i++
                 }
-                ir.jit()[0].runFunction(info.attributes["func"]!!.value, arrayOf(*params.toTypedArray()))
+                val exec = ir.jit("main")[0].runFunction(info.attributes["func"]!!.value, arrayOf(5))
+                println(exec.content)
                 entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
                 info.attributes["func"]!!.value
             }),
