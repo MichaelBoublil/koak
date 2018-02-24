@@ -22,8 +22,7 @@ class Api {
                     params += getInfos(info.attributes[i.toString()]!!)
                     i++
                 }
-
-
+                ir.jit()[0].runFunction(info.attributes["func"]!!.value, arrayOf(*params.toTypedArray()))
                 entry.append((info.attributes["func"]!!).value, arrayOf("call", (info.attributes["func"]!!).value, *params.toTypedArray()))
                 info.attributes["func"]!!.value
             }),
@@ -123,10 +122,11 @@ class Api {
             }),
             (InstructionType.WHILE_EXPR to {
                 info ->
-                val actualFunc = ir.modules["main"]!!.functions[context]!!
-
-                val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
-                val end = ir.modules["main"]!!.functions[context]!!.Blocks["end"]!!
+                throw Exception("Instruction not implemented")
+//                val actualFunc = ir.modules["main"]!!.functions[context]!!
+//
+//                val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
+//                val end = ir.modules["main"]!!.functions[context]!!.Blocks["end"]!!
 
 //                val condBlock = actualFunc.addBlock("condBlock")
 //                blockContext = condBlock.identifier
@@ -135,18 +135,18 @@ class Api {
 //                FacRet.append("result", arrayOf("phi int",
 //                        FacFalse.identifier, "n * fac(n - 1)",
 //                        FacEntry.identifier, "1"))
-                val whileBlock = actualFunc.addBlock("while" + incrWhile++)
-                entry.append("jump", arrayOf("jump", whileBlock.identifier))
-
-                blockContext = whileBlock.identifier
-                getInfos(info.attributes["actions"]!!)
-                whileBlock.append("resCond", arrayOf("phi int",
-                        entry.identifier, "i",
-                        whileBlock.identifier, "tmpadd"))
-                val cond = getInfos(info.attributes["condition"]!!)
-                whileBlock.append("jump", arrayOf("conditional jump", cond, whileBlock.identifier, end.identifier))
-                blockContext = "end"
-                "0"
+//                val whileBlock = actualFunc.addBlock("while" + incrWhile++)
+//                entry.append("jump", arrayOf("jump", whileBlock.identifier))
+//
+//                blockContext = whileBlock.identifier
+//                whileBlock.append("resCond", arrayOf("phi int",
+//                        entry.identifier, "i",
+//                        whileBlock.identifier, "tmpadd"))
+//                getInfos(info.attributes["actions"]!!)
+//                val cond = getInfos(info.attributes["condition"]!!)
+//                whileBlock.append("jump", arrayOf("conditional jump", cond, whileBlock.identifier, end.identifier))
+//                blockContext = "end"
+//                "0"
             }),
             (InstructionType.BODY to {
                 info ->

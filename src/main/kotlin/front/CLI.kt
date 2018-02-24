@@ -27,7 +27,6 @@ class CLI {
                     ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("jump", arrayOf("jump", "end"))
 
                 ir.modules["main"]!!.functions["main"]!!.Blocks["end"]!!.append("return", arrayOf("return", "0"))
-//                ir.modules["main"]!!.functions["main"]!!.Blocks["entry"]!!.append("return", arrayOf("return", "0"))
                 ir.verify()
                 ir.compile(outputFile)
             } else {

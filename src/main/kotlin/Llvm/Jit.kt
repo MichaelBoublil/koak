@@ -101,6 +101,23 @@ class Jit constructor (val module: Ir.Module,
     }
 
     // TODO: runFunction with Array<String> pour pouvoir appeler n'importe quelle fonction.. :/
+    fun runFunction(functionIdentifier: String, args : Array<String>) : ExecResult
+    {
+        var target = functionIdentifier
+
+        val exec_args = PointerPointer(*args.map {
+            if (it.contains(Regex("^.*[\\.].*$"))) {
+                LLVMCreateGenericValueOfFloat(LLVMDoubleType(), it.toDouble())
+            }
+            else
+                LLVMCreateGenericValueOfInt(LLVMInt32Type(), it.toLong(), 0)
+        }.toTypedArray())
+        val exec_res = LLVMRunFunction(engine, module.functions[target]!!._funLlvm, args.size, exec_args)
+        val res = ExecResult(LLVMGenericValueToInt(exec_res, 0).toString())
+
+        res.source = functionIdentifier
+        return res
+    }
     fun runFunction(functionIdentifier: String, args : Array<Int>) : ExecResult
     {
         var target = functionIdentifier

@@ -346,7 +346,6 @@ class Ir
                         return v.value
             }
             throw Exception("Unresolved identifier ${identifier}")
-//            return null
         }
 
         fun print() {
