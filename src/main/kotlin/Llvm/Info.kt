@@ -26,7 +26,7 @@ enum class InstructionType {
     PROTOARGS,
     BODY,
     EXPRESSION,
-
+    WHILE_EXPR
 }
 
 class Info(val type : InstructionType, var value : String = "default value", val attributes : MutableMap<String, Info> = mutableMapOf<String, Info>()) {

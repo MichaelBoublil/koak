@@ -1,18 +1,5 @@
 extern putchar(c:int):int;
 
-#def func(x:int):int
-# if x == 5 then
-#   putchar(97)
-# else if x == 6 then
-#   putchar(98)
-# else
-#   putchar(99);
-
-#func(5);
-#func(6);
-#func(7);
-
-def add(x:int y:int) : int x + y;
-
-putchar(add(add(95, 3), 1));
-
+i = 97;
+while i == 97 do
+  putchar(i) : i = i + 1;

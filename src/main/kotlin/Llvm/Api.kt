@@ -6,6 +6,7 @@ import java.lang.Thread.sleep
 
 class Api {
     var incrInstr = 0
+    var incrWhile = 0
     var isInCondBlock : Boolean = false;
     var ir = Ir()
     var context = "main"
@@ -120,6 +121,33 @@ class Api {
 
                 "0"
             }),
+            (InstructionType.WHILE_EXPR to {
+                info ->
+                val actualFunc = ir.modules["main"]!!.functions[context]!!
+
+                val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
+                val end = ir.modules["main"]!!.functions[context]!!.Blocks["end"]!!
+
+//                val condBlock = actualFunc.addBlock("condBlock")
+//                blockContext = condBlock.identifier
+//                val cond = getInfos(info.attributes["condition"]!!)
+//                condBlock.append("jump", arrayOf("conditional jump", cond, whileBlock.identifier, end.identifier))
+//                FacRet.append("result", arrayOf("phi int",
+//                        FacFalse.identifier, "n * fac(n - 1)",
+//                        FacEntry.identifier, "1"))
+                val whileBlock = actualFunc.addBlock("while" + incrWhile++)
+                entry.append("jump", arrayOf("jump", whileBlock.identifier))
+
+                blockContext = whileBlock.identifier
+                getInfos(info.attributes["actions"]!!)
+                whileBlock.append("resCond", arrayOf("phi int",
+                        entry.identifier, "i",
+                        whileBlock.identifier, "tmpadd"))
+                val cond = getInfos(info.attributes["condition"]!!)
+                whileBlock.append("jump", arrayOf("conditional jump", cond, whileBlock.identifier, end.identifier))
+                blockContext = "end"
+                "0"
+            }),
             (InstructionType.BODY to {
                 info ->
                 var retVal = "0"
@@ -182,8 +210,10 @@ class Api {
                 } else
                     "int"
 
-                entry.append(instrType, arrayOf(paramType + " " + params[0], params[1], params[2]))
-                instrType
+//                entry.append(instrType, arrayOf(paramType + " " + params[0], params[1], params[2]))
+//                instrType
+                entry.append("resCond==97", arrayOf("int " + params[0], "resCond", "97"))
+                "resCond==97"
             }),
             (InstructionType.DEF_FUNC to {
                 info ->
@@ -481,10 +511,6 @@ class Api {
     }
 
     private fun ifExprHandler(node: IfExpr) : Info {
-//        val FacEntry = myFacFunction.Blocks["entry"]!!
-//        val FacFalse = myFacFunction.Blocks["iffalse"]!!
-//        val FacRet = myFacFunction.Blocks["end"]!!
-
         val info = Info(InstructionType.CONDITION)
         info.attributes["condition"] = expressionHandler(node.children[0] as Expression)
         info.attributes["if"] = expressionsHandler(node.children[1] as Expressions)
@@ -496,7 +522,11 @@ class Api {
     }
 
     private fun whileExprHandler(node: WhileExpr) : Info {
-        return Info(InstructionType.ERROR)
+        val info = Info(InstructionType.WHILE_EXPR)
+
+        info.attributes["condition"] = expressionHandler(node.children[0] as Expression)
+        info.attributes["actions"] = expressionsHandler(node.children[1] as Expressions)
+        return info
     }
 
     private fun interpretInfos(infos : Info ) : String {
@@ -522,13 +552,10 @@ class Api {
                 when (child) {
                     is TopExpr -> {
                         val infos = topExprHandler(child)
-//                        infos.dump()
-//                        println("====================")
                         retVal = interpretInfos(infos)
                     }
                     is LocalDef -> {
                         val infos = localDefHandler(child)
-//                        infos.dump()
                         interpretInfos(infos)
                     }
                     is ExtDef -> {
