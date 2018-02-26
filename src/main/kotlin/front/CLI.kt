@@ -34,12 +34,9 @@ class CLI {
                 try {
                     val ast = parser.parse()
                     if (ast.nodes.isEmpty())
-                        println("Syntax Error")
-                    else {
-                        println(ast.dump())
+                        println("Syntax Error.")
+                    else
                         ir = llvm.toIR(ast, ir, "CLI")
-                        ir.print()
-                    }
                 } catch (e: Exception) {
                     System.err.println("Compilation Error.")
                     e.printStackTrace()

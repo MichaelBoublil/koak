@@ -62,6 +62,8 @@ class Api {
                 for (param in paramName) {
                     myFunc.declareParamVar(param, i++)
                 }
+                if (runMode == "CLI")
+                    ir.print()
                 info.value
             }),
 
@@ -85,11 +87,6 @@ class Api {
                     value = getInfos(info.attributes[i.toString()]!!)
                     i++
                 }
-//                if (context != "main") {
-//                    val entry = ir.modules["main"]!!.functions[context]!!.Blocks[blockContext]!!
-//
-//                    entry.append("ret", arrayOf("return", value))
-//                }
                 value
             }),
             (InstructionType.CONDITION to {
@@ -245,7 +242,6 @@ class Api {
                                 arrayOf(*paramType.toTypedArray())
                         )
                 i = 0
-//                if (myFunc.)
                 for (param in paramName) {
                     myFunc.declareParamVar(param, i++)
                 }
@@ -260,6 +256,8 @@ class Api {
                 end.append("ret", arrayOf("return", value))
 
                 context = "main"
+                if (runMode == "CLI")
+                    ir.print()
                 info.value
             })
     )

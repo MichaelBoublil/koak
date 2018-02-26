@@ -15,9 +15,7 @@ class PegParser(private var _str : String? = null) {
     fun parse(): AST {
         if (_str == null)
             throw Exception(Messages.nullString)
-        println("La string au debut : " + _str)
        val res = startParse(_str!!, emptyList())
-        println("str a la fin : " + res.first)
         if (res.second == null || res.first!!.isNotEmpty())
             return (AST())
         return AST(*res.second!!.toTypedArray())

@@ -422,7 +422,6 @@ class Ir
                     .replace("; preds = ", "Incoming From ")
                     .replace("define", "fun")
                     .replace("; ModuleID = ", "Current Module : ")
-            println(str)
         }
 
         fun declare(identifier: String, value: String) {
@@ -462,12 +461,10 @@ class Ir
         for (mod in modules) {
             if (module != "") {
                 val res = mod.value.jit()
-                println("JIT Of ${mod.value.identifier} is :\n$res")
                 list.add(res)
             } else {
                 if (module == mod.key) {
                     val res = mod.value.jit()
-                    println("JIT Of ${mod.value.identifier} is :\n$res")
                     list.add(res)
                 }
             }
@@ -478,7 +475,6 @@ class Ir
     fun compile(dest: String)
     {
         for (mod in modules) {
-            println("Compiling module ${mod.key}")
             mod.value.jit(dest)
         }
     }
@@ -499,11 +495,9 @@ class Ir
 
     fun verify()
     {
-        System.err.println("Verify modules...")
         for (module in modules) {
             LLVMVerifyModule(module.value._modLlvm, LLVMAbortProcessAction, error)
         }
         LLVMDisposeMessage(error) // Handler == LLVMAbortProcessAction -> No need to check errors
-        System.err.println("Modules verified.")
     }
 }

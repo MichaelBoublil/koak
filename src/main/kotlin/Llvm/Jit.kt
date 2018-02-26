@@ -45,7 +45,6 @@ class Jit constructor (val module: Ir.Module,
         LLVMInitializeAllAsmParsers();
         LLVMInitializeAllAsmPrinters();
 
-        println("Creating JIT Engine for Module ${module.identifier}")
         for (f in module.functions)
             f.value.print()
 
@@ -74,15 +73,12 @@ class Jit constructor (val module: Ir.Module,
         val myMachine = LLVMCreateTargetMachine(machineRef, targetTriple.string, "generic", "", 0, 0, 0)
         val machineDataLayout = LLVMCreateTargetDataLayout(myMachine)
 
-        println("Creating target machine ...")
 
         LLVMSetModuleDataLayout(module._modLlvm, machineDataLayout)
         var bp = BytePointer(filename + ".s")
         LLVMTargetMachineEmitToFile(myMachine, module._modLlvm, bp, LLVMAssemblyFile, error)
-        println("Creating assembly... $filename.s")
         bp = BytePointer(filename + ".o")
         LLVMTargetMachineEmitToFile(myMachine, module._modLlvm, bp, LLVMObjectFile, error)
-        println("Creating object... $filename.o")
 
         val process = ProcessBuilder("./linker.sh", filename).start()
 
