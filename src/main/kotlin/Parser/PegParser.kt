@@ -513,27 +513,94 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isBinop(str: String?) : Pair<String?, INode?> {
-        when (str!!.first()) {
+        return when (str!!.first()) {
             '=' -> {
                 when (str.drop(1).first()) {
-                    '=' -> {}
-                    else -> return Pair(str.drop(1), BinOp("=", true))
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
+                    else -> Pair(str.drop(1), BinOp("=", true))
                 }
             }
-        }
-        return when (str.matches(Regex("(\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|^=|\\|=).*"))) {
-            true -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
-            else -> {
-                return when (str.matches(Regex("(\\|\\||&&|==|!=|<=|>=).*"))) {
-                    true -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
-                    else -> {
-                        return when (str.first()) {
-                            in "+-*/%<>|" -> Pair(str.drop(1), BinOp(str.first().toString(), false))
-                            else -> Pair(str, null)
+            '+' -> {
+                when (str.drop(1).first()) {
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
+                    else -> Pair(str.drop(1), BinOp("+", false))
+                }
+            }
+            '-' -> {
+                when (str.drop(1).first()) {
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
+                    else -> Pair(str.drop(1), BinOp("-", false))
+                }
+            }
+            '*' -> {
+                when (str.drop(1).first()) {
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
+                    else -> Pair(str.drop(1), BinOp("*", false))
+                }
+            }
+            '/' -> {
+                when (str.drop(1).first()) {
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
+                    else -> Pair(str.drop(1), BinOp("/", false))
+                }
+            }
+            '%' -> {
+                when (str.drop(1).first()) {
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
+                    else -> Pair(str.drop(1), BinOp("%", false))
+                }
+            }
+            '&' -> {
+                when (str.drop(1).first()) {
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
+                    '&' -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
+                    else -> Pair(str.drop(1), BinOp("&", false))
+                }
+            }
+            '^' -> {
+                when (str.drop(1).first()) {
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
+                    else -> Pair(str.drop(1), BinOp("^", false))
+                }
+            }
+            '!' -> {
+                when (str.drop(1).first()) {
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
+                    else -> Pair(str, null)
+                }
+            }
+            '|' -> {
+                when (str.drop(1).first()) {
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), true))
+                    '|' -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
+                    else -> Pair(str.drop(1), BinOp("|", false))
+                }
+            }
+            '<' -> {
+                when (str.drop(1).first()) {
+                    '<' -> {
+                        when (str.drop(2).first()) {
+                            '=' -> Pair(str.drop(3), BinOp(str.substring(0, 3), true))
+                            else -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
                         }
                     }
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
+                    else -> Pair(str.drop(1), BinOp("<", false))
                 }
             }
+            '>' -> {
+                when (str.drop(1).first()) {
+                    '>' -> {
+                        when (str.drop(2).first()) {
+                            '=' -> Pair(str.drop(3), BinOp(str.substring(0, 3), true))
+                            else -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
+                        }
+                    }
+                    '=' -> Pair(str.drop(2), BinOp(str.substring(0, 2), false))
+                    else -> Pair(str.drop(1), BinOp(">", false))
+                }
+            }
+            else -> Pair(str, null)
         }
     }
 
@@ -558,7 +625,6 @@ class PegParser(private var _str : String? = null) {
                 }
             }
         }
-
     }
 
     private fun isUnop(str: String?): Pair<String?, INode?> {
