@@ -1,3 +1,5 @@
+@file:Suppress("UNUSED_ANONYMOUS_PARAMETER")
+
 package Llvm
 
 import com.sun.org.apache.xpath.internal.operations.Bool
@@ -85,7 +87,7 @@ class Ir
                             throw Exception("Call to undefined function ${args[1]} at ${identifier}")
                         placeEditorAtMe()
 
-                        _content[identifier] = LLVMBuildCall(Builder.llvm, targetFunc!!, PointerPointer(*call_args), call_args.size, identifier)
+                        _content[identifier] = LLVMBuildCall(Builder.llvm, targetFunc, PointerPointer(*call_args), call_args.size, identifier)
                         println("added new function call ${args[1]} in module label ${func.identifier} at ${identifier}" )
                         return true
                     }
@@ -422,6 +424,7 @@ class Ir
                     .replace("; preds = ", "Incoming From ")
                     .replace("define", "fun")
                     .replace("; ModuleID = ", "Current Module : ")
+            println(str)
         }
 
         fun declare(identifier: String, value: String) {

@@ -1,13 +1,13 @@
+@file:Suppress("UNUSED_PARAMETER")
+
 package Llvm
 
 import Parser.*
 import org.bytedeco.javacpp.LLVM.*
-import java.lang.Thread.sleep
 
 class Api {
     var incrInstr = 0
     var incrWhile = 0
-    var isInCondBlock : Boolean = false;
     var ir = Ir()
     var context = "main"
     var blockContext = "entry"
@@ -81,7 +81,7 @@ class Api {
             }),
             (InstructionType.EXPRESSION to {
                 info ->
-                var value : String = ""
+                var value = ""
                 var i = 0
                 while (i < info.attributes.size) {
                     value = getInfos(info.attributes[i.toString()]!!)
@@ -126,8 +126,10 @@ class Api {
 
                 "0"
             }),
-            (InstructionType.WHILE_EXPR to {
-                info ->
+            (InstructionType.ERROR to { _ ->
+                throw Exception("Instruction not implemented")
+            }),
+            (InstructionType.WHILE_EXPR to { _ ->
                 throw Exception("Instruction not implemented")
 //                val actualFunc = ir.modules["main"]!!.functions[context]!!
 //
@@ -207,14 +209,12 @@ class Api {
                     i++
                 }
                 val instrType = params[1] + " " + params[0] + " " + params[2]
-                var paramType : String = ""
 
-                paramType = if (params[1].first().isLetter()) {
-                    actualFunc.getIdentifierType(params[1])
-                } else if (params[1].contains(Regex("^.*[\\.].*$"))) {
-                    "double"
-                } else
-                    "int"
+                val paramType = when {
+                    params[1].first().isLetter() -> actualFunc.getIdentifierType(params[1])
+                    params[1].contains(Regex("^.*[.].*$")) -> "double"
+                    else -> "int"
+                }
 
                 entry.append(instrType, arrayOf(paramType + " " + params[0], params[1], params[2]))
                 instrType
@@ -441,8 +441,6 @@ class Api {
         for (child in node.children) {
             when (child) {
                 is Expression -> {
-                    // Avant y'avait juste += expressionHandler(child).attributes
-                    // TODO  a tester avec le reste
                     params.attributes[i.toString()] = expressionHandler(child).attributes["0"]!!
                     i++
                 }
@@ -509,7 +507,9 @@ class Api {
         return Info(InstructionType.VALUE, node.s)
     }
 
-    private fun unOpHandler(node: UnOp) : Info {return Info(InstructionType.ERROR)}
+    private fun unOpHandler(node: UnOp) : Info {
+        return Info(InstructionType.ERROR)
+    }
 
     private fun forExprHandler(node: ForExpr) : Info {
         return Info(InstructionType.ERROR)
@@ -580,71 +580,11 @@ class Api {
         return ir
     }
 
-    fun jit(tree: AST): MutableList<Jit> {
-        val ir = toIR(tree, null, "CLI")
-        val jit = ir.jit()
-        return jit
-    }
-
     init {
         LLVMLinkInMCJIT()
         LLVMInitializeNativeAsmPrinter()
         LLVMInitializeNativeAsmParser()
         LLVMInitializeNativeDisassembler()
         LLVMInitializeNativeTarget()
-    }
-
-    fun grok(args: Array<String>) {
-        // An IR is a collection of Modules
-        val ir = Ir()
-
-        // That a module, it can contain more than one function
-        val myMod = ir.createModule("fac_module")
-
-        val myFacFunction = myMod.addFunction(LLVMInt32Type(), "myFactorial", arrayOf(LLVMInt32Type()))
-        myFacFunction.declareParamVar("n", 0)
-
-        // On pourrait faciliter la creation de plusieurs label d'un coup
-        // myFacFunction.bulkAddBlocks("entry", "iffalse", "end") (donc 4 lignes au lieu de 3... super !)
-        myFacFunction.addBlocks("entry", "iffalse", "end")
-        val FacEntry = myFacFunction.Blocks["entry"]!!
-        val FacFalse = myFacFunction.Blocks["iffalse"]!!
-        val FacRet = myFacFunction.Blocks["end"]!!
-//        val FacEntry = myFacFunction.addBlock("entry")
-//        val FacFalse = myFacFunction.addBlock("iffalse")
-//        val FacRet = myFacFunction.addBlock("end")
-
-        FacEntry.append("n == 1", arrayOf("int ==", "n", "1"))
-        FacEntry.append("jump", arrayOf("conditional jump", "n == 1", FacRet.identifier, FacFalse.identifier))
-
-        myFacFunction.createConstInt("-1")
-        FacFalse.append("n - 1", arrayOf("binop", "+", "n", "-1"))
-        FacFalse.append("fac(n - 1)", arrayOf("call", myFacFunction.identifier, "n - 1"))
-        FacFalse.append("n * fac(n - 1)", arrayOf("binop", "*", "n", "fac(n - 1)"))
-        FacFalse.append("jump", arrayOf("jump", FacRet.identifier))
-
-        myFacFunction.createConstInt("1")
-        FacRet.append("result", arrayOf("phi int",
-                FacFalse.identifier, "n * fac(n - 1)",
-                FacEntry.identifier, "1"))
-        FacRet.append("return result", arrayOf("return", "result"))
-
-        val putchar = myMod.addFunction(LLVMInt32Type(), "putchar", arrayOf(LLVMInt32Type()))
-        putchar.declareParamVar("c", 0)
-
-        // Important to set an entry point in the module for JIT
-        val main = myMod.addFunction(LLVMInt32Type(), "main", arrayOf())
-        val entrypoint = main.addBlock("entrypoint")
-        entrypoint.append("call putchar", arrayOf("call", "putchar", "97"))
-        entrypoint.append("ret", arrayOf("return", "0"))
-        myMod.setMain("main")
-
-        myMod.print()
-        ir.verify()
-        sleep(1000)
-        val arr = ir.jit("fac_module")
-        val res = arr[0].runFunction("myFactorial", arrayOf(5))
-        println(res.content)
-        ir.compile("compiledIR")
     }
 }
