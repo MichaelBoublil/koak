@@ -8,6 +8,7 @@ import org.bytedeco.javacpp.LLVM.*
 class Api {
     var incrInstr = 0
     var incrWhile = 0
+    var incrGen = 0
     var ir = Ir()
     var context = "main"
     var blockContext = "entry"
@@ -194,6 +195,7 @@ class Api {
                     "-" -> instrType = "tmpsub"
                     "/" -> instrType = "tmpdiv"
                 }
+                instrType += incrGen++
                 entry.append(instrType, arrayOf("binop", params[0], *params.drop(1).toTypedArray()))
                 instrType
             }),
@@ -375,6 +377,9 @@ class Api {
         when (node.s) {
             "=" -> instr = InstructionType.ASSIGNMENT
             "==" -> instr = InstructionType.COMPARE
+            "!=" -> instr = InstructionType.COMPARE
+            "<=" -> instr = InstructionType.COMPARE
+            ">=" -> instr = InstructionType.COMPARE
             in "<>" -> instr = InstructionType.COMPARE
             in "+-*/" -> instr = InstructionType.CALCULUS
         }
@@ -411,7 +416,10 @@ class Api {
         val child = node.children[0]
         return when (child) {
             is UnOp -> {
-                unOpHandler(child)
+                val sign = unOpHandler(child)
+                val value = unaryHandler(node.children[1] as Unary)
+                value.value = sign + value.value
+                value
             }
             is PostFix -> {
                 postFixHandler(child)
@@ -507,8 +515,8 @@ class Api {
         return Info(InstructionType.VALUE, node.s)
     }
 
-    private fun unOpHandler(node: UnOp) : Info {
-        return Info(InstructionType.ERROR)
+    private fun unOpHandler(node: UnOp) : String {
+        return node.s
     }
 
     private fun forExprHandler(node: ForExpr) : Info {

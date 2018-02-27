@@ -26,6 +26,7 @@ class Compiler(file : String) {
             if (ast.nodes.isEmpty())
                 println("Syntax Error")
             else {
+                println(ast.dump())
                 val llvm = Api()
                 ir = llvm.toIR(ast, ir, "Compiler")
                 ir.print()

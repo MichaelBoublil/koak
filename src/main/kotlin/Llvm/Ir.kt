@@ -36,15 +36,70 @@ class Ir
 
         init {
             factory["double !="] =
-                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildFCmp(Builder.llvm, LLVMIntNE, first, second, identifier)
+                        return true
+                    }
             factory["double >="] =
-                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildFCmp(Builder.llvm, LLVMIntSGE, first, second, identifier)
+                        return true
+                    }
             factory["double <="] =
-                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildFCmp(Builder.llvm, LLVMIntSLE, first, second, identifier)
+                        return true
+                    }
             factory["double <"] =
-                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildFCmp(Builder.llvm, LLVMIntSLT, first, second, identifier)
+                        return true
+                    }
             factory["double >"] =
-                    fun(identifier: String, args: Array<String>) : Boolean {return false}
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildFCmp(Builder.llvm, LLVMIntSGT, first, second, identifier)
+                        return true
+                    }
             factory["double =="] =
                     fun(identifier: String, args: Array<String>) : Boolean {
                         if (args.size < 3)
@@ -69,6 +124,71 @@ class Ir
 
                         placeEditorAtMe()
                         _content[identifier] = LLVMBuildICmp(Builder.llvm, LLVMIntEQ, first, second, identifier)
+                        return true
+                    }
+            factory["int !="] =
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildICmp(Builder.llvm, LLVMIntNE, first, second, identifier)
+                        return true
+                    }
+            factory["int <="] =
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildICmp(Builder.llvm, LLVMIntSLE, first, second, identifier)
+                        return true
+                    }
+            factory["int >="] =
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildICmp(Builder.llvm, LLVMIntSGE, first, second, identifier)
+                        return true
+                    }
+            factory["int <"] =
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildICmp(Builder.llvm, LLVMIntSLT, first, second, identifier)
+                        return true
+                    }
+            factory["int >"] =
+                    fun(identifier: String, args: Array<String>) : Boolean {
+                        if (args.size < 3)
+                            return false
+                        var first : LLVMValueRef
+                        var second : LLVMValueRef
+                        first = func.getLocalVar(args[1])?.let { it } ?: func.search(args[1]) as LLVMValueRef
+                        second = func.getLocalVar(args[2])?.let { it } ?: func.search(args[2]) as LLVMValueRef
+
+                        placeEditorAtMe()
+                        _content[identifier] = LLVMBuildICmp(Builder.llvm, LLVMIntSGT, first, second, identifier)
                         return true
                     }
             factory["call"] =

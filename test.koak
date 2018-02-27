@@ -1,8 +1,16 @@
 extern putchar(c:int):int;
 
 def add(x:int):int
-  x + 2;
+  if x < 0 then
+    putchar(97)
+  else if x >= 96 then
+    putchar(x + 4)
+  else if x != 98 then
+    putchar(x + 6)
+  else
+    putchar(x + 8);
 
-putchar(add(95));
-
-
+add(-5);
+add(96);
+add(97);
+add(98);
