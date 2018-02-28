@@ -567,6 +567,8 @@ class Api {
                     is TopExpr -> {
                         val infos = topExprHandler(child)
                         retVal = interpretInfos(infos)
+                        if (retVal.first().isLetter())
+                            retVal = "0"
                     }
                     is LocalDef -> {
                         val infos = localDefHandler(child)

@@ -4,4 +4,3 @@ def retVal():int
   97;
 
 d = retVal();
-putchar(d);
