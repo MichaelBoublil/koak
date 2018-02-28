@@ -1,7 +1,0 @@
-def printdensity(d)
-    if d > 8 then
-        putchar(32)  # ' '
-    else if d > 4 then
-    	 putchar(46)
-    else
-        putchar(42); # '*'

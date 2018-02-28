@@ -1,0 +1,3 @@
+extern putchar(c:int):int;
+
+putchar(97);

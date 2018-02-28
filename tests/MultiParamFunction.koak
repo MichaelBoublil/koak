@@ -1,0 +1,8 @@
+extern putchar(c:int):int;
+
+def add(a:int b:int):int
+  a + b;
+
+d = add(95, 2);
+
+putchar(d);
