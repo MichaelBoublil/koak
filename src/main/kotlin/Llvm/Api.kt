@@ -40,6 +40,8 @@ class Api {
                 info ->
                 val prototype = info.attributes["prototype"]!!
                 val knownTypes : MutableMap<String, LLVMTypeRef> = mutableMapOf()
+                //TODO: CHAR NE FONCTIONNE PAS COMPLETEMENT. INFERENCE DE TYPE LORSQUE LE PARAM EST INT CA NE PERMET PAS LA COMPIL.
+                knownTypes["char"] = LLVMInt8Type()
                 knownTypes["int"] = LLVMInt32Type()
                 knownTypes["double"] = LLVMDoubleType()
                 knownTypes["void"] = LLVMVoidType()

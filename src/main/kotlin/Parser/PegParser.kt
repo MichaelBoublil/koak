@@ -259,15 +259,21 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isType(str: String?) : Pair<String, Boolean> {
+        //TODO: VERIFICATION DES ESPACES ICI AUSSI.
         return when (str!!.startsWith("int")) {
             true -> Pair("int", true)
             false -> {
-                return when (str!!.startsWith("double")) {
+                return when (str.startsWith("double")) {
                     true -> Pair("double", true)
                     false -> {
-                        return when (str!!.startsWith("void")) {
+                        return when (str.startsWith("void")) {
                             true -> Pair("void", true)
-                            false -> Pair("", false)
+                            false -> {
+                                return when (str.startsWith("char")) {
+                                    true -> Pair("char", true)
+                                    false -> Pair("", false)
+                                }
+                            }
                         }
                     }
                 }

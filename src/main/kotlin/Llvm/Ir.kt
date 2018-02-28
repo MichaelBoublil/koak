@@ -379,7 +379,7 @@ class Ir
         }
         val fromTypeToString : MutableMap<LLVMTypeRef, String> = mutableMapOf()
         init {
-            fromTypeToString[LLVMInt8Type()] = "int"
+            fromTypeToString[LLVMInt8Type()] = "char"
             fromTypeToString[LLVMInt32Type()] = "int"
             fromTypeToString[LLVMInt64Type()] = "int"
             fromTypeToString[LLVMDoubleType()] = "double"
@@ -401,7 +401,7 @@ class Ir
         }
         fun declareLocalVar(identifier: String, type: String, value: String, search: Boolean = false) {
             val knownTypes : MutableMap<String, LLVMTypeRef> = mutableMapOf()
-            knownTypes["int8"] = LLVMInt8Type()
+            knownTypes["char"] = LLVMInt8Type()
             knownTypes["int32"] = LLVMInt32Type()
             knownTypes["int64"] = LLVMInt64Type()
             knownTypes["double"] = LLVMDoubleType()
@@ -418,7 +418,7 @@ class Ir
                 return
             }
             try {
-                if (type == "int8") {
+                if (type == "char") {
                     _local[identifier] = LLVMConstInt(LLVMInt8Type(), value.toLong(), signed)
                 }
                 if (type == "int32") {
