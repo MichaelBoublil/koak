@@ -80,7 +80,7 @@ class Jit constructor (val module: Ir.Module,
         bp = BytePointer(filename + ".o")
         LLVMTargetMachineEmitToFile(myMachine, module._modLlvm, bp, LLVMObjectFile, error)
 
-        ProcessBuilder("./linker.sh", filename).start()
+        ProcessBuilder("./linker.sh", filename).start().waitFor()
 
         if (targetIndex != 0)
             throw Exception(error.string)

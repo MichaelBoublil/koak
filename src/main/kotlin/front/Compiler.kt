@@ -2,31 +2,49 @@ package front
 
 import Llvm.Api
 import Llvm.Ir
+import Parser.AST
 import org.bytedeco.javacpp.LLVM.LLVMInt32Type
 import java.io.File
 import java.io.InputStream
 
-class Compiler(file : String) {
+class Compiler(var file : String = "") {
     val parser = Parser.PegParser()
     var ir = Ir()
+    var isEmpty = false
 
     init {
-        val inputStream: InputStream = File(file).inputStream()
-        val inputString = inputStream.bufferedReader().use { it.readText() }
+        createParser()
 
-        val finalInput = inputString.replace(Regex("#.*"), "")
-        parser.setString(finalInput.replace(Regex("\n"), ""))
         val main = ir.createModule("main").addFunction(LLVMInt32Type(), "main", arrayOf())
         main.addBlocks("entry", "end")
     }
 
+    fun setFileName(fileName : String) {
+        file = fileName
+    }
+
+    fun createParser() {
+        if (file.isNotEmpty()) {
+            val inputStream: InputStream = File(file).inputStream()
+            val inputString = inputStream.bufferedReader().use { it.readText() }
+
+            val finalInput = inputString.replace(Regex("#.*"), "")
+            val finallInput = finalInput.replace(Regex("\n"), "")
+            if (finallInput.replace(Regex("[ \t]"), "").isEmpty())
+                isEmpty = true
+            parser.setString(finallInput)
+        }
+    }
+
     fun compile() {
         try {
-            val ast = parser.parse()
-            if (ast.nodes.isEmpty())
+            val ast = if (!isEmpty)
+                parser.parse()
+            else
+                AST()
+            if (ast.nodes.isEmpty() && !isEmpty)
                 println("Syntax Error")
             else {
-                println(ast.dump())
                 val llvm = Api()
                 ir = llvm.toIR(ast, ir, "Compiler")
                 ir.print()
