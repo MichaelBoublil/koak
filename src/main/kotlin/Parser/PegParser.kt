@@ -4,7 +4,6 @@ import com.sun.corba.se.impl.resolver.INSURLOperationImpl
 import com.sun.org.apache.xml.internal.dtm.ref.sax2dtm.SAX2DTM2
 import jdk.nashorn.internal.codegen.CompilerConstants
 import java.lang.System.out
-import java.util.regex.Pattern
 
 class PegParser(private var _str : String? = null) {
 
@@ -57,17 +56,22 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isExtDef(str: String?): Pair<String?, INode?> {
-        return when (str!!.contains(Regex("^extern[ \t]+"))) {
+        return when (str!!.startsWith("extern")) {
             true -> {
-                val ret = isPrototype(str.drop(6))
-                return when (ret.second) {
-                    null -> Pair(str, null)
-                    else -> {
-                        return when (ret.first!!.first()) {
-                            ';' -> Pair(ret.first!!.drop(1), ExtDef(ret.second!!))
-                            else -> Pair(str, null)
+                return when (isSpacing(str.drop(6))) {
+                    true -> {
+                        val ret = isPrototype(str.drop(6))
+                        return when (ret.second) {
+                            null -> Pair(str, null)
+                            else -> {
+                                return when (ret.first!!.first()) {
+                                    ';' -> Pair(ret.first!!.drop(1), ExtDef(ret.second!!))
+                                    else -> Pair(str, null)
+                                }
+                            }
                         }
                     }
+                    false -> Pair(str, null)
                 }
             }
             false -> Pair(str, null)
@@ -75,11 +79,19 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isSpacing(str: String?) : Boolean {
-        return (str!!.contains(Regex("^[ \t]+")))
+        return when (str!!.first()) {
+            in " \t" -> true
+            else -> false
+        }
     }
 
     private fun epurSpace(str: String) : String {
-        return (str.replace(Regex("^[ \t]*"), ""))
+        if (str.isEmpty())
+            return str
+        return when (str.first()) {
+            in " \t" -> epurSpace(str.drop(1))
+            else -> str
+        }
     }
 
     private fun isLocalDef(str: String?): Pair<String?, INode?> {
@@ -89,7 +101,7 @@ class PegParser(private var _str : String? = null) {
                 return when (isSpacing(str1)) {
                     false -> Pair(str, null)
                     true -> {
-                        val ret = isDefs(str1.replace(Regex("^[ \t]+"), ""))
+                        val ret = isDefs(epurSpace(str1))
                         return when (ret.second) {
                             null -> Pair(str, null)
                             else -> {
@@ -302,12 +314,13 @@ class PegParser(private var _str : String? = null) {
         return when (ret.second) {
             null -> Pair(str, list)
             else -> {
-                return when (ret.first!!.contains(Regex("^[ \t]*:[ \t]*"))) {
-                    true -> {
-                        val next1 = ret.first!!.replace(Regex("^[ \t]*:[ \t]*"), "")
-                        expressionRec(next1, list + ret.second!!)
+                val str1 = epurSpace(ret.first!!)
+                return when (str1.first()) {
+                    ':' -> {
+                        val next = epurSpace(str1.drop(1))
+                        expressionRec(next, list + ret.second!!)
                     }
-                    false -> Pair(ret.first, list + ret.second!!)
+                    else -> Pair(ret.first, list + ret.second!!)
                 }
             }
         }
@@ -346,36 +359,54 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isIfExpr(str: String?): Pair<String?, INode?> {
-        return when (str!!.contains(Regex("^if[ \t]+"))) {
+        return when (str!!.startsWith("if")) {
             true -> {
-                val ret = isExpression(str.drop(2))
-                return when (ret.second) {
-                    null -> Pair(str, null)
-                    else -> {
-                        val str1 = epurSpace(ret.first!!)
-                        return when (str1.contains(Regex("^then[ \t]+"))) {
-                            true -> {
-                                val ret1 = isExpressions(str1.drop(4))
-                                return when (ret1.second) {
-                                    null -> Pair(str, null)
-                                    else -> {
-                                        val str2 = epurSpace(ret1.first!!)
-                                        return when (str2.contains(Regex("^else[ \t]+"))) {
+                return when (isSpacing(str.drop(2))) {
+                    true -> {
+                        val ret = isExpression(str.drop(2))
+                        return when (ret.second) {
+                            null -> Pair(str, null)
+                            else -> {
+                                val str1 = epurSpace(ret.first!!)
+                                return when (str1.startsWith("then")) {
+                                    true -> {
+                                        return when (isSpacing(str1.drop(4))) {
                                             true -> {
-                                                val ret2 = isExpressions(str2.drop(4))
-                                                return when (ret2.second) {
+
+                                                val ret1 = isExpressions(str1.drop(4))
+                                                return when (ret1.second) {
                                                     null -> Pair(str, null)
-                                                    else -> Pair(ret2.first, IfExpr(ret.second!!, ret1.second!!, ret2.second!!))
+                                                    else -> {
+                                                        val str2 = epurSpace(ret1.first!!)
+
+                                                        return when (str2.startsWith("else")) {
+                                                            true -> {
+                                                                return when (isSpacing(str2.drop(4))) {
+                                                                    true -> {
+                                                                        val ret2 = isExpressions(str2.drop(4))
+                                                                        return when (ret2.second) {
+                                                                            null -> Pair(str, null)
+                                                                            else -> Pair(ret2.first, IfExpr(ret.second!!, ret1.second!!, ret2.second!!))
+                                                                        }
+                                                                    }
+                                                                    false -> Pair(ret1.first, IfExpr(ret.second!!, ret1.second!!))
+                                                                }
+                                                            }
+
+                                                            false -> Pair(ret1.first, IfExpr(ret.second!!, ret1.second!!))
+                                                        }
+                                                    }
                                                 }
                                             }
-                                            false -> Pair(ret1.first, IfExpr(ret.second!!, ret1.second!!))
+                                            false -> Pair(str, null)
                                         }
                                     }
+                                    false -> Pair (str, null)
                                 }
                             }
-                            false -> Pair(str, null)
                         }
                     }
+                    false -> Pair(str, null)
                 }
             }
             false -> Pair(str, null)
@@ -383,24 +414,35 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isWhileExpr(str: String?): Pair<String?, INode?> {
-        return when (str!!.contains(Regex("^while[ \t]+"))) {
+        return when (str!!.startsWith("while")) {
             true -> {
-                val ret = isExpression(str.drop(5))
-                return when (ret.second) {
-                    null -> Pair(str, null)
-                    else -> {
-                        val str1 = epurSpace(ret.first!!)
-                        return when (str1.contains(Regex("^do[ \t]+"))) {
-                            true -> {
-                                val ret1 = isExpressions(str1.drop(2))
-                                return when (ret1.second) {
-                                    null -> Pair(str, null)
-                                    else -> Pair(ret1.first, WhileExpr(ret.second!!, ret1.second!!))
+                return when (isSpacing(str.drop(5))) {
+                    true -> {
+                        val ret = isExpression(str.drop(5))
+                        return when (ret.second) {
+                            null -> Pair(str, null)
+                            else -> {
+                                val str1 = epurSpace(ret.first!!)
+
+                                return when (str1.startsWith("do")) {
+                                    true -> {
+                                        return when (isSpacing(str1.drop(2))) {
+                                            true -> {
+                                                val ret1 = isExpressions(str1.drop(2))
+                                                return when (ret1.second) {
+                                                    null -> Pair(str, null)
+                                                    else -> Pair(ret1.first, WhileExpr(ret.second!!, ret1.second!!))
+                                                }
+                                            }
+                                            false -> Pair(str, null)
+                                        }
+                                    }
+                                    false -> Pair(str, null)
                                 }
                             }
-                            false -> Pair(str, null)
                         }
                     }
+                    false -> Pair(str, null)
                 }
             }
             false -> Pair(str, null)
@@ -408,75 +450,87 @@ class PegParser(private var _str : String? = null) {
     }
 
     private fun isForExpr(str: String?): Pair<String?, INode?> {
-        return when (str!!.contains(Regex("^for[ \t]+"))) {
+
+        return when (str!!.startsWith("for")) {
             true -> {
-                val ret = isIdentifier(str.drop(3))
-                return when (ret.second) {
-                    null -> Pair(str, null)
-                    else -> {
-                        val str1 = epurSpace(ret.first!!)
-                        return when (str1.first()) {
-                            '=' -> {
-                                val ret1 = isExpression(str1.drop(1))
-                                return when (ret1.second) {
-                                    null -> Pair(str, null)
-                                    else -> {
-                                        val str2 = epurSpace(ret1.first!!)
-                                        return when (str2.first()) {
-                                            ',' -> {
-                                                val ret2 = isIdentifier(str2.drop(1))
-                                                return when (ret2.second) {
-                                                    null -> Pair(str, null)
-                                                    else -> {
-                                                        val str3 = epurSpace(ret2.first!!)
-                                                        return when (str3.first()) {
-                                                            '<' -> {
-                                                                val ret3 = isExpression(str3.drop(1))
-                                                                return when (ret3.second) {
-                                                                    null -> Pair(str, null)
-                                                                    else -> {
-                                                                        val str4 = epurSpace(ret3.first!!)
-                                                                        return when (str4.first()) {
-                                                                            ',' -> {
-                                                                                val ret4 = isExpression(str4.drop(1))
-                                                                                return when (ret4.second) {
-                                                                                    null -> Pair(str, null)
-                                                                                    else -> {
-                                                                                        val str5 = epurSpace(ret4.first!!)
-                                                                                        return when (str5.contains(Regex("in[ \t]+"))) {
-                                                                                            true -> {
-                                                                                                val ret5 = isExpressions(str5.drop(2))
-                                                                                                return when (ret5.second) {
-                                                                                                    null -> Pair(str, null)
-                                                                                                    else -> Pair(ret5.first, ForExpr(ret.second!!,
-                                                                                                            ret1.second!!, ret2.second!!,
-                                                                                                            ret3.second!!, ret4.second!!,
-                                                                                                            ret5.second!!))
+                return when (isSpacing(str.drop(3))) {
+                    true -> {
+
+                        val ret = isIdentifier(str.drop(3))
+                        return when (ret.second) {
+                            null -> Pair(str, null)
+                            else -> {
+                                val str1 = epurSpace(ret.first!!)
+                                return when (str1.first()) {
+                                    '=' -> {
+                                        val ret1 = isExpression(str1.drop(1))
+                                        return when (ret1.second) {
+                                            null -> Pair(str, null)
+                                            else -> {
+                                                val str2 = epurSpace(ret1.first!!)
+                                                return when (str2.first()) {
+                                                    ',' -> {
+                                                        val ret2 = isIdentifier(str2.drop(1))
+                                                        return when (ret2.second) {
+                                                            null -> Pair(str, null)
+                                                            else -> {
+                                                                val str3 = epurSpace(ret2.first!!)
+                                                                return when (str3.first()) {
+                                                                    '<' -> {
+                                                                        val ret3 = isExpression(str3.drop(1))
+                                                                        return when (ret3.second) {
+                                                                            null -> Pair(str, null)
+                                                                            else -> {
+                                                                                val str4 = epurSpace(ret3.first!!)
+                                                                                return when (str4.first()) {
+                                                                                    ',' -> {
+                                                                                        val ret4 = isExpression(str4.drop(1))
+                                                                                        return when (ret4.second) {
+                                                                                            null -> Pair(str, null)
+                                                                                            else -> {
+                                                                                                val str5 = epurSpace(ret4.first!!)
+                                                                                                return when (str5.startsWith("in")) {
+                                                                                                    true -> {
+                                                                                                        return when (isSpacing(str5.drop(2))) {
+                                                                                                            true -> {
+                                                                                                                val ret5 = isExpressions(str5.drop(2))
+                                                                                                                return when (ret5.second) {
+                                                                                                                    null -> Pair(str, null)
+                                                                                                                    else -> Pair(ret5.first, ForExpr(ret.second!!,
+                                                                                                                            ret1.second!!, ret2.second!!,
+                                                                                                                            ret3.second!!, ret4.second!!,
+                                                                                                                            ret5.second!!))
+                                                                                                                }
+                                                                                                            }
+                                                                                                            false -> Pair(str, null)
+                                                                                                        }
+                                                                                                    }
+                                                                                                    false -> Pair(str, null)
                                                                                                 }
                                                                                             }
-                                                                                            false -> Pair(str, null)
                                                                                         }
                                                                                     }
+                                                                                    else -> Pair(str, null)
                                                                                 }
                                                                             }
-                                                                            else -> Pair(str, null)
                                                                         }
                                                                     }
+                                                                    else -> Pair(str, null)
                                                                 }
                                                             }
-                                                            else -> Pair(str, null)
                                                         }
                                                     }
+                                                    else -> Pair(str, null)
                                                 }
                                             }
-                                            else -> Pair(str, null)
                                         }
                                     }
+                                    else -> Pair(str, null)
                                 }
                             }
-                            else -> Pair(str, null)
                         }
                     }
+                    false -> Pair(str, null)
                 }
             }
             false -> Pair(str, null)
