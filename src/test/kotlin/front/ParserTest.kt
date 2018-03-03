@@ -12,7 +12,7 @@ import Parser.PegParser
 class ParserTest: Spek({
     given("A parser") {
         val parser = PegParser()
-        on("Function with int parameter and int return value. Correct syntax.") {
+        on("Function Definition. Function with int parameter and int return value. Correct syntax.") {
             parser.setString("def fun(x : int) : int 2 + x;")
             val tree = parser.parse()
             it("should return the following value") {
@@ -44,8 +44,55 @@ class ParserTest: Spek({
                 assertEquals(tree.dump(), ref.dump())
             }
         }
-        on("Simple Command Hello World. Correct Syntax") {
-            parser.setString("putchar(48);")
+
+        on("Function Definition. Function with int parameter and int return value + call to function. Correct syntax.") {
+            parser.setString("def fun(x : int) : int 2 + x; fun(97);")
+            val tree = parser.parse()
+            it("should return the following value") {
+                val ref = AST(
+                        KDefs(
+                                LocalDef(
+                                        Defs(
+                                                Prototype(
+                                                        Identifier("fun"),
+                                                        PrototypeArgs(
+                                                                Args(
+                                                                        Identifier("x"),
+                                                                        VarType("int")
+                                                                ),
+                                                                FunType("int"))
+                                                ),
+                                                Expressions(
+                                                        Expression(
+                                                                BinOp("+", false,
+                                                                        Unary(PostFix(Primary(Literal(DecimalConst("2"))))),
+                                                                        Unary(PostFix(Primary(Identifier("x"))))
+                                                                )
+                                                        )
+                                                )
+                                        )
+                                )
+
+                        ),
+                        KDefs(
+                                TopExpr(
+                                        Expressions(
+                                                Expression(
+                                                        Unary(PostFix(
+                                                                Primary(Identifier("fun")),
+                                                                CallExpr(Expression(Unary(PostFix(Primary(Literal(DecimalConst("97")))))))
+                                                        ))
+                                                )
+                                        )
+                                )
+                        )
+                )
+                assertEquals(tree.dump(), ref.dump())
+            }
+        }
+
+        on("Multi operator + assignment. Correct syntax.") {
+            parser.setString("d = 3 + 2 - 1;")
             val tree = parser.parse()
 
             it("should return the following value") {
@@ -54,155 +101,103 @@ class ParserTest: Spek({
                                 TopExpr(
                                         Expressions(
                                                 Expression(
+                                                        BinOp("=", true, Unary(
+                                                                PostFix(Primary(Identifier("d")))),
+                                                                Expression(
+                                                                        BinOp("-", false, BinOp(
+                                                                                    "+", false, Unary(PostFix(Primary(Literal(DecimalConst("3"))))),
+                                                                                    Unary(PostFix(Primary(Literal(DecimalConst("2")))))),
+                                                                                Unary(PostFix(Primary(Literal(DecimalConst("1"))))))
+                                                                        )
+                                                                )
+
+                                                )
+                                        )
+                                )
+                        )
+                )
+                assertEquals(tree.dump(), ref.dump())
+            }
+        }
+
+
+        on("If and else. Correct syntax.") {
+            parser.setString("if 1 < 0 then putchar(97) else putchar(98);")
+            val tree = parser.parse()
+
+            it("should return the following value") {
+                val ref = AST(
+                        KDefs(
+                                TopExpr(
+                                        Expressions(
+                                                IfExpr(
+                                                        Expression(
+                                                                BinOp("<", false, Unary(
+                                                                        PostFix(Primary(Literal(DecimalConst("1"))))),
+                                                                        Unary(
+                                                                                PostFix(Primary(Literal(DecimalConst("0")))))
+                                                                )
+                                                        ),
+                                                        Expressions(
+                                                                Expression(
+                                                                        Unary(PostFix(Primary(Identifier("putchar")),
+                                                                                CallExpr(Expression(Unary(PostFix(Primary(Literal(DecimalConst("97")))))))
+                                                                            )
+                                                                        )
+                                                                )
+                                                        ),
+                                                        Expressions(
+                                                                Expression(
+                                                                        Unary(PostFix(Primary(Identifier("putchar")),
+                                                                                CallExpr(Expression(Unary(PostFix(Primary(Literal(DecimalConst("98")))))))
+                                                                        )
+                                                                        )
+                                                                )
+                                                        )
+                                                )
+                                        )
+                                )
+                        )
+                )
+
+                assertEquals(tree.dump(), ref.dump())
+            }
+        }
+
+        on("Extern definition of putchar  + call putchar with 97:  Correct Syntax") {
+            parser.setString("extern putchar(nb : int) : int; putchar(97);")
+            val tree = parser.parse()
+            it("should return the following value") {
+                val ref = AST(
+                        KDefs(
+                                ExtDef(
+                                        Prototype(
+                                                Identifier("putchar"),
+                                                PrototypeArgs(
+                                                        Args(
+                                                                Identifier("nb"),
+                                                                VarType("int")
+                                                        ),
+                                                        FunType("int")
+                                                )
+                                        )
+                                )
+                        ),
+                        KDefs(
+                                TopExpr(
+                                        Expressions(
+                                                Expression(
                                                         Unary(PostFix(
                                                                 Primary(Identifier("putchar")),
-                                                                CallExpr(Expression(Unary(PostFix(Primary(Literal(DecimalConst("48")))))))
+                                                                CallExpr(Expression(Unary(PostFix(Primary(Literal(DecimalConst("97")))))))
                                                         ))
                                                 )
                                         )
                                 )
                         )
-                );
+                )
                 assertEquals(ref.dump(), tree.dump())
             }
         }
-
-//        on("Multiplication Function. Correct Syntax") {
-//            parser.setString("def mult(nb1 : int nb2 : int) : int nb1 * nb2;")
-//            val tree = parser.parse()
-//            val falseTree = "AST(KDefs(LocalDef(Defs(Prototype(Identifier(mult), PrototypeArgs(Identifier(nb1), VarType(int), Identifier(nb2), VarType(int), FunType(int))), Expressions(Expression(BinOp(*; rightAssoc = false; Unary(PostFix(Primary(Identifier(nb1)))), Unary(PostFix(Primary(Identifier(nb2)))))))))))"
-//            it("should return the following value") {
-//                val ref = AST(
-//                        KDefs(
-//                                LocalDef(
-//                                        Defs(
-//                                                Prototype(Identifier("mult"),
-//                                                          PrototypeArgs(Identifier("nb1"),
-//                                                                        VarType("int"),
-//                                                                        Identifier("nb1"),
-//                                                                        VarType("int"),
-//                                                                        FunType("int"))),
-//                                                Expressions(
-//                                                   Expression(
-//                                                      BinOp("*", false,
-//                                                         Unary(
-//                                                           PostFix(
-//                                                             Primary(
-//                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
-//
-//                println("REFERENCE: " + ref.dump());
-//                println("ACTUAL: " + falseTree);
-//                assertEquals(ref.dump(), falseTree)
-//            }
-//        }
-//
-//        on("Addition Function. Correct Syntax") {
-//            parser.setString("def add(nb1 : int nb2 : int) : int nb1 + nb2;")
-//            val tree = parser.parse()
-//            val falseTree = "AST(KDefs(LocalDef(Defs(Prototype(Identifier(add), PrototypeArgs(Identifier(nb1), VarType(int), Identifier(nb2), VarType(int), FunType(int))), Expressions(Expression(BinOp(+; rightAssoc = false; Unary(PostFix(Primary(Identifier(nb1)))), Unary(PostFix(Primary(Identifier(nb2)))))))))))"
-//            it("should return the following value") {
-//                val ref = AST(
-//                        KDefs(
-//                                LocalDef(
-//                                        Defs(
-//                                                Prototype(Identifier("add"),
-//                                                        PrototypeArgs(Identifier("nb1"),
-//                                                                VarType("int"),
-//                                                                Identifier("nb1"),
-//                                                                VarType("int"),
-//                                                                FunType("int"))),
-//                                                Expressions(
-//                                                        Expression(
-//                                                                BinOp("+", false,
-//                                                                        Unary(
-//                                                                                PostFix(
-//                                                                                        Primary(
-//                                                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
-//
-//                println("REFERENCE: " + ref.dump());
-//                println("ACTUAL: " + falseTree);
-//                assertEquals(ref.dump(), falseTree)
-//            }
-//        }
-//
-//        on("Substraction Function. Correct Syntax") {
-//            parser.setString("def sub(nb1 : int nb2 : int) : int nb1 - nb2;")
-//            val tree = parser.parse()
-//            val falseTree = "AST(KDefs(LocalDef(Defs(Prototype(Identifier(sub), PrototypeArgs(Identifier(nb1), VarType(int), Identifier(nb2), VarType(int), FunType(int))), Expressions(Expression(BinOp(-; rightAssoc = false; Unary(PostFix(Primary(Identifier(nb1)))), Unary(PostFix(Primary(Identifier(nb2)))))))))))"
-//            it("should return the following value") {
-//                val ref = AST(
-//                        KDefs(
-//                                LocalDef(
-//                                        Defs(
-//                                                Prototype(Identifier("sub"),
-//                                                        PrototypeArgs(Identifier("nb1"),
-//                                                                VarType("int"),
-//                                                                Identifier("nb1"),
-//                                                                VarType("int"),
-//                                                                FunType("int"))),
-//                                                Expressions(
-//                                                        Expression(
-//                                                                BinOp("-", false,
-//                                                                        Unary(
-//                                                                                PostFix(
-//                                                                                        Primary(
-//                                                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
-//
-//                println("REFERENCE: " + ref.dump());
-//                println("ACTUAL: " + falseTree);
-//                assertEquals(ref.dump(), falseTree)
-//            }
-//        }
-//
-//        on("Division Function. Correct Syntax") {
-//            parser.setString("def div(nb1 : int nb2 : int) : int nb1 / nb2;")
-//            val tree = parser.parse()
-//            val falseTree = "AST(KDefs(LocalDef(Defs(Prototype(Identifier(div), PrototypeArgs(Identifier(nb1), VarType(int), Identifier(nb2), VarType(int), FunType(int))), Expressions(Expression(BinOp(/; rightAssoc = false; Unary(PostFix(Primary(Identifier(nb1)))), Unary(PostFix(Primary(Identifier(nb2)))))))))))"
-//            it("should return the following value") {
-//                val ref = AST(
-//                        KDefs(
-//                                LocalDef(
-//                                        Defs(
-//                                                Prototype(Identifier("div"),
-//                                                        PrototypeArgs(Identifier("nb1"),
-//                                                                VarType("int"),
-//                                                                Identifier("nb1"),
-//                                                                VarType("int"),
-//                                                                FunType("int"))),
-//                                                Expressions(
-//                                                        Expression(
-//                                                                BinOp("/", false,
-//                                                                        Unary(
-//                                                                                PostFix(
-//                                                                                        Primary(
-//                                                                                                Identifier("nb1")))), Unary(PostFix(Primary(Identifier("nb2")))))))))));
-//
-//                println("REFERENCE: " + ref.dump());
-//                println("ACTUAL: " + falseTree);
-//                assertEquals(ref.dump(), falseTree)
-//            }
-//        }
-
-        // Ce test suggererait qu'on fait en effet l'inférence de type.
-        /*on("Simple Variable affectation WITH inference of type") {
-            parser.setString("x = 10;")
-            val tree = parser.parse()
-
-            it("should return the following value") {
-                val ref = AST(
-                        TopExpr(
-                                Expressions(
-                                        Expression(
-                                                Unary(PostFix(Primary(Identifier("x")))),
-                                                BinOp("=", true),
-                                                Unary(PostFix(Primary(Literal(DecimalConst("10")))))
-                                        )
-                                )
-                        )
-                );
-                println("REFERENCE: " + ref.dump());
-                assertEquals(tree.dump(), ref.dump())
-            }
-        }*/
     }
 })
