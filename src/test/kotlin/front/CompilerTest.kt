@@ -93,5 +93,14 @@ class CompilerTest: Spek({
                 assertEquals(ref, res)
             }
         }
+        on("Full test in file") {
+
+            execTestOnFile(compiler!!, "Full.koak")
+
+            it("Should return the following value") {
+                val ref = "aebece"
+                assertEquals(ref, res)
+            }
+        }
     }
 })

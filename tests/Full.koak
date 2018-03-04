@@ -1,0 +1,19 @@
+#random commentary
+
+extern putchar(c: int) : int; #extern
+
+def condFunc(x:int y:int):int # multiple parameter function
+  if x == 5 then
+    putchar(97)
+  else if y >= 10 then # nested if inside if condition
+    putchar(98)
+  else
+    putchar(99);
+
+d = condFunc(5, 10) + 101 : putchar(d); # Variable assignation using a function call and + operator and then display of that variable value using a double instruction
+
+putchar(condFunc(6, 11) + 101); # nested function call with + operator usage
+putchar(condFunc(6, 9) + 101); # idem, but this is used to prove that we can enter in the else condition
+
+
+# output result should be "aebece"
